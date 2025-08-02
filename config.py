@@ -17,5 +17,5 @@ OLLAMA_MODEL = "llama3.1:8b"
 OLLAMA_BASE_URL = "http://localhost:11434"
 
 # Uygulama ayarları streamlit run /Users/bora/Desktop/test/app.py streamlit run app.py
-APP_TITLE = "PDF Soru-Cevap Sistemi"
-APP_DESCRIPTION = "PDF dosyalarınızı yükleyin ve sorularınızı sorun"
+APP_TITLE = "AselBoss AI"
+APP_DESCRIPTION = "AselBoss AI - PDF Belgeleri ile Soru-Cevap Uygulaması"

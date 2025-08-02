@@ -283,7 +283,7 @@ with st.sidebar:
             "OCR": "✅" if status.get("ocr", False) else "❌",
             "PyMuPDF4LLM": "✅" if status.get("pymupdf4llm", False) else "❌"
         }
-        
+    
         for method, status_icon in method_status.items():
             st.write(f"{status_icon} {method}")
         
@@ -333,11 +333,25 @@ if st.session_state.rag_chain:
             st.write(question)
         
         # Cevap üret
+        # Cevap üret
         with st.chat_message("assistant"):
             with st.spinner("Düşünüyorum..."):
                 response = st.session_state.rag_chain.query(question)
                 
-                st.write(response["answer"])
+                # Yazma efekti ile cevabı göster
+                message_placeholder = st.empty()
+                full_response = ""
+                
+                # Kelime kelime yazma efekti
+                import time
+                words = response["answer"].split()
+                for word in words:
+                    full_response += word + " "
+                    message_placeholder.markdown(full_response + "▌")
+                    time.sleep(0.05)  # Yazma hızını ayarlayabilirsiniz (0.01-0.1 arası)
+                
+                # Son halini göster (cursor'ı kaldır)
+                message_placeholder.markdown(full_response)
                 
                 # Kaynakları göster
                 sources = []
