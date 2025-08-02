@@ -9,8 +9,8 @@ VECTOR_STORE_DIR = BASE_DIR / "vectorstore"
 
 # Model ayarları
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-CHUNK_SIZE = 1500
-CHUNK_OVERLAP = 300
+CHUNK_SIZE = 2000
+CHUNK_OVERLAP = 400
 
 # Ollama ayarları sf117 sf127
 OLLAMA_MODEL = "llama3.1:8b"

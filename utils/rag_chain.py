@@ -51,7 +51,7 @@ Senin görevin, kullanıcıdan gelen soruya yalnızca bu bağlam içinde *geçen
             chain_type="stuff",
             retriever=vectorstore.as_retriever(
                 search_type="similarity",
-                search_kwargs={"k": 5}
+                search_kwargs={"k": 15}
             ),
             return_source_documents=True,
             chain_type_kwargs={"prompt": self.PROMPT}
