@@ -47,7 +47,7 @@ try:
     
 except ImportError as e:
     st.warning(f"⚠️ 4-Yöntem PDF işleyici kullanılamıyor: {str(e)}")
-    st.info("Temel PDF işleyici kullanılacak.")
+    st.info("Standart PDF işleyici kullanılacak.")
 
 # Sayfa yapılandırması
 st.set_page_config(
@@ -76,10 +76,10 @@ def process_uploaded_pdfs(uploaded_files, processing_mode="basic", debug_mode=Fa
     # İşleyici seçimi
     if FOUR_METHOD_AVAILABLE and processing_mode == "4method" and Advanced4MethodPDFProcessor:
         pdf_processor = Advanced4MethodPDFProcessor(CHUNK_SIZE, CHUNK_OVERLAP, debug=debug_mode)
-        st.info("🚀 4-Yöntem akıllı PDF işleyici kullanılıyor...")
+        st.info("Boss Mode PDF işleyici kullanılıyor...")
     else:
         pdf_processor = PDFProcessor(CHUNK_SIZE, CHUNK_OVERLAP, debug=debug_mode)
-        st.info("⚡ Temel PDF işleyici kullanılıyor...")
+        st.info("⚡ Standart PDF işleyici kullanılıyor...")
     
     all_documents = []
     
@@ -166,8 +166,8 @@ with st.sidebar:
             "🔧 İşleme Modu",
             ["basic", "4method"],
             format_func=lambda x: {
-                "basic": "⚡ Temel (Hızlı)",
-                "4method": "🚀 4-Yöntem Akıllı (En İyi Kalite)"
+                "basic": "⚡ Standart (Hızlı)",
+                "4method": "🤖 Boss Mode (En İyi Kalite)"
             }[x],
             help="4-Yöntem: PyMuPDF + pdfplumber + OCR + PyMuPDF4LLM kombinasyonu"
         )
@@ -175,7 +175,7 @@ with st.sidebar:
         # 4-yöntem hakkında bilgi
         if processing_mode == "4method":
             st.info("""
-            **🚀 4-Yöntem Akıllı İşleme:**
+            **Boss Mode İşleme:**
             • Her sayfa için 4 yöntemi dener
             • En iyi sonucu otomatik seçer
             • Tablo, OCR ve Markdown desteği
@@ -183,7 +183,7 @@ with st.sidebar:
             """)
     else:
         processing_mode = "basic"
-        st.info("ℹ️ Şu anda temel mod kullanılıyor")
+        st.info("ℹ️ Şu anda Standart mod kullanılıyor")
     
     # Debug modu
     debug_mode = st.checkbox(
@@ -251,7 +251,7 @@ with st.sidebar:
             fourmethod_files = [f for f in debug_files if "_4method_" in f.name]
             
             if basic_files:
-                st.write("**⚡ Temel PDF İşleme:**")
+                st.write("**⚡ Standart PDF İşleme:**")
                 for debug_file in sorted(basic_files, reverse=True)[:2]:
                     st.text(f"• {debug_file.name}")
             
@@ -301,7 +301,7 @@ with st.sidebar:
             for cmd in missing_methods:
                 st.code(cmd)
     else:
-        st.warning("⚠️ Temel PDF işleme modu")
+        st.warning("⚠️ Standart PDF işleme modu")
         st.write("4-Yöntem için gerekli kütüphaneleri kurun")
     
     if st.session_state.vectorstore:
@@ -384,7 +384,7 @@ else:
     if not FOUR_METHOD_AVAILABLE:
         with st.expander("⚙️ 4-Yöntem PDF İşleme Kurulumu"):
             st.markdown("""
-            **Adım 1: Temel kütüphaneleri kurun**
+            **Adım 1: Standart kütüphaneleri kurun**
             ```bash
             pip install PyMuPDF pdfplumber pytesseract Pillow
             ```
@@ -405,26 +405,26 @@ else:
             """)
     
     # Kullanım kılavuzu
-    with st.expander("📖 Özellikler ve Kullanım"):
+    with st.expander("Özellikler ve Kullanım"):
         st.markdown("""
-        **🔧 İşleme Modları:**
-        - **⚡ Temel**: Hızlı, standart PDF okuma (PyPDFLoader)
-        - **🚀 4-Yöntem Akıllı**: 4 farklı yöntemle çıkarım, en iyisini seçer
+        **Modlar:**
+        - **Standart**: Hızlı, standart PDF okuma (PyPDFLoader)
+        - **Boss Mode**: 4 farklı yöntemle analiz yapar ve en iyisini seçer.
         
-        **🚀 4-Yöntem Avantajları:**
+        **Boss Mode Avantajları:**
         - **PyMuPDF**: Hızlı, genel amaçlı
         - **pdfplumber**: Tablo algılama ve çıkarma
         - **OCR**: Taranmış PDF'leri okur (Türkçe destekli)
-        - **PyMuPDF4LLM**: LLM için optimize edilmiş, Markdown çıktısı
+        - **PyMuPDF4LLM**: LLM için optimize edilmiş.
         
-        **🧠 Akıllı Seçim Sistemi:**
+        **Akıllı Seçim Sistemi:**
         - Her sayfa için 4 yöntemi dener
         - Kalite skoruna göre en iyisini seçer
         - Tablo varsa pdfplumber'ı tercih eder
         - Görsel PDF'lerde OCR'yi kullanır
         - LLM uyumluluğu için PyMuPDF4LLM'yi optimize eder
         
-        **🐛 Debug Özelliği:**
+        **Debug Özelliği:**
         - 4 yöntemin karşılaştırmasını yapar
         - Hangi yöntemin hangi sayfalarda başarılı olduğunu gösterir
         - Kalite skorlarını analiz eder
