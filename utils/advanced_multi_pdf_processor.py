@@ -14,7 +14,7 @@ try:
 except ImportError:
     PYMUPDF4LLM_AVAILABLE = False
 
-class Advanced4MethodPDFProcessor:
+class AdvancedPDFProcessor:
     def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200, debug: bool = False):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -112,6 +112,7 @@ class Advanced4MethodPDFProcessor:
             print(f"  - {pdf_name}_*_pymupdf4llm_final_result.txt (TAM içerikli final sonuç)")
         
         return chunks
+    
     def extract_with_pymupdf4llm_merged(self, pdf_path: str) -> List[Document]:
         """PyMuPDF4LLM ile çıkarma - Sayfa geçişlerini akıllı birleştirme"""
         if not PYMUPDF4LLM_AVAILABLE:
@@ -256,6 +257,7 @@ class Advanced4MethodPDFProcessor:
             result_lines = prev_lines + current_lines[1:]
         
         return '\n'.join(result_lines)
+    
     def extract_with_pymupdf4llm(self, pdf_path: str) -> List[Document]:
         """PyMuPDF4LLM ile Markdown formatında çıkarma (LLM için optimize edilmiş)"""
         if not PYMUPDF4LLM_AVAILABLE:
@@ -475,8 +477,7 @@ class Advanced4MethodPDFProcessor:
         
         print(f"PyMuPDF4LLM TAM içerik final sonuç kaydedildi: {filepath}")
         return filepath
-    
-    
+
 
 # Gereksinimler kontrolü - Sadece PyMuPDF4LLM
 def check_all_dependencies():

@@ -12,11 +12,10 @@ if str(project_root) not in sys.path:
 from config import *
 from utils.embeddings import EmbeddingManager
 from utils.rag_chain import RAGChain
-from utils.pdf_processor import PDFProcessor
 
 # PyMuPDF4LLM PDF işleyiciyi güvenli şekilde import et
 PYMUPDF4LLM_AVAILABLE = False
-Advanced4MethodPDFProcessor = None
+AdvancedPDFProcessor = None
 check_all_dependencies = None
 
 try:
@@ -25,7 +24,7 @@ try:
     PYMUPDF4LLM_AVAILABLE = True
     
     # PyMuPDF4LLM işleyiciyi import et
-    from utils.advanced_multi_pdf_processor import Advanced4MethodPDFProcessor, check_all_dependencies
+    from utils.advanced_multi_pdf_processor import AdvancedPDFProcessor, check_all_dependencies
     
     # Mevcut durumu kontrol et
     status, available_count = check_all_dependencies()
@@ -34,8 +33,7 @@ try:
         st.success(f"✅ PyMuPDF4LLM PDF işleyici aktif!")
     
 except ImportError as e:
-    st.warning(f"⚠️ PyMuPDF4LLM mevcut değil: {str(e)}")
-    st.info("Standart PDF işleyici kullanılacak.")
+    st.error(f"❌ PyMuPDF4LLM mevcut değil: {str(e)}")
     st.info("💡 PyMuPDF4LLM kurmak için: `pip install pymupdf4llm`")
 
 # Sayfa yapılandırması
@@ -59,16 +57,17 @@ if 'rag_chain' not in st.session_state:
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
-def process_uploaded_pdfs(uploaded_files, processing_mode="pymupdf4llm", debug_mode=False):
+def process_uploaded_pdfs(uploaded_files, debug_mode=False):
     """Yüklenen PDF'leri PyMuPDF4LLM ile işle"""
     
-    # İşleyici seçimi
-    if PYMUPDF4LLM_AVAILABLE and processing_mode == "pymupdf4llm" and Advanced4MethodPDFProcessor:
-        pdf_processor = Advanced4MethodPDFProcessor(CHUNK_SIZE, CHUNK_OVERLAP, debug=debug_mode)
-        st.info("🤖 PyMuPDF4LLM işleyici kullanılıyor...")
-    else:
-        pdf_processor = PDFProcessor(CHUNK_SIZE, CHUNK_OVERLAP, debug=debug_mode)
-        st.info("⚡ Standart PDF işleyici kullanılıyor...")
+    # PyMuPDF4LLM kontrolü
+    if not PYMUPDF4LLM_AVAILABLE or not AdvancedPDFProcessor:
+        st.error("❌ PyMuPDF4LLM mevcut değil! Lütfen kurun: pip install pymupdf4llm")
+        return []
+    
+    # PDF işleyici oluştur
+    pdf_processor = AdvancedPDFProcessor(CHUNK_SIZE, CHUNK_OVERLAP, debug=debug_mode)
+    st.info("🤖 PyMuPDF4LLM işleyici kullanılıyor...")
     
     all_documents = []
     
@@ -91,7 +90,7 @@ def process_uploaded_pdfs(uploaded_files, processing_mode="pymupdf4llm", debug_m
                 st.success(f"✅ {uploaded_file.name}: {len(file_chunks)} parça oluşturuldu")
                 
                 # PyMuPDF4LLM istatistikleri
-                if processing_mode == "pymupdf4llm" and file_chunks:
+                if file_chunks:
                     # Markdown özelliklerini göster
                     total_markdown_features = sum(doc.metadata.get('markdown_features', 0) for doc in file_chunks)
                     if total_markdown_features > 0:
@@ -138,33 +137,6 @@ st.markdown(APP_DESCRIPTION)
 with st.sidebar:
     st.header("📁 PDF Yükleme")
     
-    # İşleme modu seçimi
-    if PYMUPDF4LLM_AVAILABLE:
-        processing_mode = st.selectbox(
-            "🔧 İşleme Modu",
-            ["pymupdf4llm", "basic"],
-            format_func=lambda x: {
-                "pymupdf4llm": "🤖 PyMuPDF4LLM (Markdown + LLM Optimize)",
-                "basic": "⚡ Standart (Hızlı)"
-            }[x],
-            help="PyMuPDF4LLM: LLM için optimize edilmiş Markdown çıktısı"
-        )
-        
-        # PyMuPDF4LLM hakkında bilgi
-        if processing_mode == "pymupdf4llm":
-            st.info("""
-            **🤖 PyMuPDF4LLM Özellikleri:**
-            • LLM için optimize edilmiş Markdown
-            • Gelişmiş tablo tanıma
-            • Başlık ve yapı algılama
-            • Çok-kolonlu sayfa desteği
-            • GitHub uyumlu formatlar
-            """)
-    else:
-        processing_mode = "basic"
-        st.info("ℹ️ Şu anda Standart mod kullanılıyor")
-        st.warning("PyMuPDF4LLM için: `pip install pymupdf4llm`")
-    
     # Debug modu
     debug_mode = st.checkbox(
         "🐛 Debug Modu", 
@@ -179,7 +151,7 @@ with st.sidebar:
     
     if uploaded_files:
         if st.button("PDF'leri İşle", type="primary"):
-            documents = process_uploaded_pdfs(uploaded_files, processing_mode, debug_mode)
+            documents = process_uploaded_pdfs(uploaded_files, debug_mode)
             
             if documents:
                 create_or_update_vectorstore(documents)
@@ -199,7 +171,7 @@ with st.sidebar:
                     st.metric("Toplam Karakter", f"{total_chars:,}")
                 
                 # PyMuPDF4LLM istatistikleri
-                if processing_mode == "pymupdf4llm" and documents:
+                if documents:
                     total_markdown = sum(doc.metadata.get("markdown_features", 0) for doc in documents)
                     st.write("**📊 PyMuPDF4LLM İstatistikleri:**")
                     st.write(f"• Markdown özellikleri: {total_markdown}")
@@ -222,14 +194,8 @@ with st.sidebar:
         if debug_files:
             st.subheader("🐛 Debug Dosyaları")
             
-            # Dosyaları türüne göre grupla
-            basic_files = [f for f in debug_files if "_basic_" in f.name]
+            # Sadece PyMuPDF4LLM dosyalarını göster
             pymupdf4llm_files = [f for f in debug_files if "_pymupdf4llm_" in f.name]
-            
-            if basic_files:
-                st.write("**⚡ Standart PDF İşleme:**")
-                for debug_file in sorted(basic_files, reverse=True)[:2]:
-                    st.text(f"• {debug_file.name}")
             
             if pymupdf4llm_files:
                 st.write("**🤖 PyMuPDF4LLM İşleme:**")
@@ -252,8 +218,8 @@ with st.sidebar:
         st.write("📝 Markdown çıktı formatı")
         st.write("📊 Gelişmiş tablo tanıma")
     else:
-        st.warning("⚠️ Standart PDF işleme modu")
-        st.write("PyMuPDF4LLM için:")
+        st.error("❌ PyMuPDF4LLM mevcut değil!")
+        st.write("Kurulum için:")
         st.code("pip install pymupdf4llm")
     
     if st.session_state.vectorstore:
@@ -299,7 +265,7 @@ if st.session_state.rag_chain:
                 for word in words:
                     full_response += word + " "
                     message_placeholder.markdown(full_response + "▌")
-                    time.sleep(0.05)  # Yazma hızını ayarlayabilirsiniz (0.01-0.1 arası)
+                    time.sleep(0.05)
                 
                 # Son halini göster (cursor'ı kaldır)
                 message_placeholder.markdown(full_response)
@@ -401,24 +367,3 @@ else:
         - Akademik yayınlar
         - Karmaşık layoutlar
         """)
-    
-    # Karşılaştırma tablosu
-    with st.expander("⚖️ Standart vs PyMuPDF4LLM Karşılaştırması"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write("**⚡ Standart PDF İşleme:**")
-            st.write("✅ Hızlı işleme")
-            st.write("✅ Basit kurulum")
-            st.write("❌ Ham metin çıktısı")
-            st.write("❌ Tablo formatı korunmaz")
-            st.write("❌ Yapı bilgisi kaybolur")
-        
-        with col2:
-            st.write("**🤖 PyMuPDF4LLM:**")
-            st.write("✅ LLM optimize çıktı")
-            st.write("✅ Markdown formatı")
-            st.write("✅ Tablo yapısı korunur")
-            st.write("✅ Başlık hiyerarşisi")
-            st.write("✅ Daha iyi RAG sonuçları")
-            st.write("❓ Ek kurulum gerekli")
