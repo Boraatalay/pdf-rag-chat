@@ -14,40 +14,29 @@ from utils.embeddings import EmbeddingManager
 from utils.rag_chain import RAGChain
 from utils.pdf_processor import PDFProcessor
 
-# 4-yöntem PDF işleyiciyi güvenli şekilde import et
-FOUR_METHOD_AVAILABLE = False
+# PyMuPDF4LLM PDF işleyiciyi güvenli şekilde import et
+PYMUPDF4LLM_AVAILABLE = False
 Advanced4MethodPDFProcessor = None
 check_all_dependencies = None
 
 try:
-    # Gerekli kütüphaneleri kontrol et
-    import fitz
-    import pdfplumber
-    import pytesseract
-    from PIL import Image
-    
     # PyMuPDF4LLM'yi kontrol et
-    try:
-        import pymupdf4llm
-        PYMUPDF4LLM_AVAILABLE = True
-    except ImportError:
-        PYMUPDF4LLM_AVAILABLE = False
+    import pymupdf4llm
+    PYMUPDF4LLM_AVAILABLE = True
     
-    # 4-yöntem işleyiciyi import et
+    # PyMuPDF4LLM işleyiciyi import et
     from utils.advanced_multi_pdf_processor import Advanced4MethodPDFProcessor, check_all_dependencies
     
-    # Mevcut yöntem sayısını kontrol et
+    # Mevcut durumu kontrol et
     status, available_count = check_all_dependencies()
-    FOUR_METHOD_AVAILABLE = available_count >= 2  # En az 2 yöntem varsa aktif
     
-    if FOUR_METHOD_AVAILABLE:
-        st.success(f"✅ 4-Yöntem PDF işleyici aktif! ({available_count}/4 yöntem mevcut)")
-        if not PYMUPDF4LLM_AVAILABLE:
-            st.info("💡 PyMuPDF4LLM kurmak için: `pip install pymupdf4llm`")
+    if PYMUPDF4LLM_AVAILABLE:
+        st.success(f"✅ PyMuPDF4LLM PDF işleyici aktif!")
     
 except ImportError as e:
-    st.warning(f"⚠️ 4-Yöntem PDF işleyici kullanılamıyor: {str(e)}")
+    st.warning(f"⚠️ PyMuPDF4LLM mevcut değil: {str(e)}")
     st.info("Standart PDF işleyici kullanılacak.")
+    st.info("💡 PyMuPDF4LLM kurmak için: `pip install pymupdf4llm`")
 
 # Sayfa yapılandırması
 st.set_page_config(
@@ -70,13 +59,13 @@ if 'rag_chain' not in st.session_state:
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
-def process_uploaded_pdfs(uploaded_files, processing_mode="basic", debug_mode=False):
-    """Yüklenen PDF'leri gelişmiş yöntemlerle işle"""
+def process_uploaded_pdfs(uploaded_files, processing_mode="pymupdf4llm", debug_mode=False):
+    """Yüklenen PDF'leri PyMuPDF4LLM ile işle"""
     
     # İşleyici seçimi
-    if FOUR_METHOD_AVAILABLE and processing_mode == "4method" and Advanced4MethodPDFProcessor:
+    if PYMUPDF4LLM_AVAILABLE and processing_mode == "pymupdf4llm" and Advanced4MethodPDFProcessor:
         pdf_processor = Advanced4MethodPDFProcessor(CHUNK_SIZE, CHUNK_OVERLAP, debug=debug_mode)
-        st.info("Boss Mode PDF işleyici kullanılıyor...")
+        st.info("🤖 PyMuPDF4LLM işleyici kullanılıyor...")
     else:
         pdf_processor = PDFProcessor(CHUNK_SIZE, CHUNK_OVERLAP, debug=debug_mode)
         st.info("⚡ Standart PDF işleyici kullanılıyor...")
@@ -101,23 +90,12 @@ def process_uploaded_pdfs(uploaded_files, processing_mode="basic", debug_mode=Fa
                 file_chunks = [d for d in documents if d.metadata.get('source') == uploaded_file.name]
                 st.success(f"✅ {uploaded_file.name}: {len(file_chunks)} parça oluşturuldu")
                 
-                # 4-yöntem istatistikleri
-                if processing_mode == "4method" and file_chunks:
-                    # Kullanılan yöntemleri göster
-                    method_usage = {}
-                    for doc in all_documents:
-                        if 'selected_method' in doc.metadata:
-                            method = doc.metadata['selected_method']
-                            method_usage[method] = method_usage.get(method, 0) + 1
-                        elif 'best_method' in doc.metadata:
-                            method = doc.metadata['best_method']
-                            method_usage[method] = method_usage.get(method, 0) + 1
-                    
-                    if method_usage:
-                        method_list = []
-                        for method, count in method_usage.items():
-                            method_list.append(f"{method}({count})")
-                        st.info(f"🔧 Kullanılan yöntemler: {', '.join(method_list)}")
+                # PyMuPDF4LLM istatistikleri
+                if processing_mode == "pymupdf4llm" and file_chunks:
+                    # Markdown özelliklerini göster
+                    total_markdown_features = sum(doc.metadata.get('markdown_features', 0) for doc in file_chunks)
+                    if total_markdown_features > 0:
+                        st.info(f"📝 Markdown özellikleri: {total_markdown_features} (başlık, tablo, vurgular)")
                 
             except Exception as e:
                 st.error(f"❌ {uploaded_file.name} işlenirken hata: {str(e)}")
@@ -161,29 +139,31 @@ with st.sidebar:
     st.header("📁 PDF Yükleme")
     
     # İşleme modu seçimi
-    if FOUR_METHOD_AVAILABLE:
+    if PYMUPDF4LLM_AVAILABLE:
         processing_mode = st.selectbox(
             "🔧 İşleme Modu",
-            ["basic", "4method"],
+            ["pymupdf4llm", "basic"],
             format_func=lambda x: {
-                "basic": "⚡ Standart (Hızlı)",
-                "4method": "🤖 Boss Mode (En İyi Kalite)"
+                "pymupdf4llm": "🤖 PyMuPDF4LLM (Markdown + LLM Optimize)",
+                "basic": "⚡ Standart (Hızlı)"
             }[x],
-            help="4-Yöntem: PyMuPDF + pdfplumber + OCR + PyMuPDF4LLM kombinasyonu"
+            help="PyMuPDF4LLM: LLM için optimize edilmiş Markdown çıktısı"
         )
         
-        # 4-yöntem hakkında bilgi
-        if processing_mode == "4method":
+        # PyMuPDF4LLM hakkında bilgi
+        if processing_mode == "pymupdf4llm":
             st.info("""
-            **Boss Mode İşleme:**
-            • Her sayfa için 4 yöntemi dener
-            • En iyi sonucu otomatik seçer
-            • Tablo, OCR ve Markdown desteği
-            • Kalite skoruna göre optimize eder
+            **🤖 PyMuPDF4LLM Özellikleri:**
+            • LLM için optimize edilmiş Markdown
+            • Gelişmiş tablo tanıma
+            • Başlık ve yapı algılama
+            • Çok-kolonlu sayfa desteği
+            • GitHub uyumlu formatlar
             """)
     else:
         processing_mode = "basic"
         st.info("ℹ️ Şu anda Standart mod kullanılıyor")
+        st.warning("PyMuPDF4LLM için: `pip install pymupdf4llm`")
     
     # Debug modu
     debug_mode = st.checkbox(
@@ -218,17 +198,13 @@ with st.sidebar:
                 with col2:
                     st.metric("Toplam Karakter", f"{total_chars:,}")
                 
-                # 4-yöntem istatistikleri
-                if processing_mode == "4method" and documents:
-                    method_stats = {}
-                    for doc in documents:
-                        method = doc.metadata.get("selected_method") or doc.metadata.get("best_method", "unknown")
-                        method_stats[method] = method_stats.get(method, 0) + 1
-                    
-                    st.write("**📊 Kullanılan Yöntemler:**")
-                    for method, count in method_stats.items():
-                        percentage = (count / total_chunks) * 100
-                        st.write(f"• {method}: {count} parça (%{percentage:.1f})")
+                # PyMuPDF4LLM istatistikleri
+                if processing_mode == "pymupdf4llm" and documents:
+                    total_markdown = sum(doc.metadata.get("markdown_features", 0) for doc in documents)
+                    st.write("**📊 PyMuPDF4LLM İstatistikleri:**")
+                    st.write(f"• Markdown özellikleri: {total_markdown}")
+                    st.write(f"• Format: GitHub uyumlu Markdown")
+                    st.write(f"• LLM optimizasyonu: Aktif")
             else:
                 st.error("❌ Hiçbir PDF işlenemedi!")
     
@@ -248,16 +224,16 @@ with st.sidebar:
             
             # Dosyaları türüne göre grupla
             basic_files = [f for f in debug_files if "_basic_" in f.name]
-            fourmethod_files = [f for f in debug_files if "_4method_" in f.name]
+            pymupdf4llm_files = [f for f in debug_files if "_pymupdf4llm_" in f.name]
             
             if basic_files:
                 st.write("**⚡ Standart PDF İşleme:**")
                 for debug_file in sorted(basic_files, reverse=True)[:2]:
                     st.text(f"• {debug_file.name}")
             
-            if fourmethod_files:
-                st.write("**🚀 4-Yöntem PDF İşleme:**")
-                for debug_file in sorted(fourmethod_files, reverse=True)[:3]:
+            if pymupdf4llm_files:
+                st.write("**🤖 PyMuPDF4LLM İşleme:**")
+                for debug_file in sorted(pymupdf4llm_files, reverse=True)[:3]:
                     st.text(f"• {debug_file.name}")
             
             if st.button("🗑️ Debug Dosyalarını Temizle"):
@@ -270,39 +246,15 @@ with st.sidebar:
     st.divider()
     st.subheader("🔧 Sistem Durumu")
     
-    if FOUR_METHOD_AVAILABLE:
-        # Mevcut yöntemleri kontrol et ve göster
-        status, available_count = check_all_dependencies()
-        
-        st.success(f"✅ 4-Yöntem işleme aktif ({available_count}/4)")
-        
-        # Her yöntemin durumunu göster
-        method_status = {
-            "PyMuPDF": "✅" if status.get("pymupdf", False) else "❌",
-            "pdfplumber": "✅" if status.get("pdfplumber", False) else "❌", 
-            "OCR": "✅" if status.get("ocr", False) else "❌",
-            "PyMuPDF4LLM": "✅" if status.get("pymupdf4llm", False) else "❌"
-        }
-    
-        for method, status_icon in method_status.items():
-            st.write(f"{status_icon} {method}")
-        
-        # Eksik yöntemler için kurulum talimatları
-        missing_methods = []
-        if not status.get("pymupdf4llm", False):
-            missing_methods.append("pip install pymupdf4llm")
-        if not status.get("ocr", False):
-            missing_methods.append("pip install pytesseract Pillow")
-        if not status.get("pdfplumber", False):
-            missing_methods.append("pip install pdfplumber")
-        
-        if missing_methods:
-            st.write("**Eksik yöntemler için:**")
-            for cmd in missing_methods:
-                st.code(cmd)
+    if PYMUPDF4LLM_AVAILABLE:
+        st.success("✅ PyMuPDF4LLM aktif")
+        st.write("🤖 LLM optimize işleme mevcut")
+        st.write("📝 Markdown çıktı formatı")
+        st.write("📊 Gelişmiş tablo tanıma")
     else:
         st.warning("⚠️ Standart PDF işleme modu")
-        st.write("4-Yöntem için gerekli kütüphaneleri kurun")
+        st.write("PyMuPDF4LLM için:")
+        st.code("pip install pymupdf4llm")
     
     if st.session_state.vectorstore:
         st.success("✅ Vektör veritabanı hazır")
@@ -333,7 +285,6 @@ if st.session_state.rag_chain:
             st.write(question)
         
         # Cevap üret
-        # Cevap üret
         with st.chat_message("assistant"):
             with st.spinner("Düşünüyorum..."):
                 response = st.session_state.rag_chain.query(question)
@@ -363,17 +314,21 @@ if st.session_state.rag_chain:
                             chunk_id = doc.metadata.get("chunk_id", "?")
                             
                             # Çıkarma yöntemi bilgisi
-                            method = (doc.metadata.get("selected_method") or 
-                                    doc.metadata.get("best_method") or 
-                                    doc.metadata.get("extraction_method", ""))
+                            method = (doc.metadata.get("extraction_method") or 
+                                    doc.metadata.get("processing_method", ""))
                             
                             st.write(f"**Kaynak {i+1}:** {source} - Sayfa {page} - Parça {chunk_id}")
                             if method:
-                                st.write(f"**Çıkarma Yöntemi:** {method}")
+                                if method == "pymupdf4llm" or "pymupdf4llm" in method:
+                                    st.write(f"**Çıkarma Yöntemi:** 🤖 PyMuPDF4LLM (Markdown)")
+                                else:
+                                    st.write(f"**Çıkarma Yöntemi:** {method}")
                             
-                            # 4-yöntem için ek bilgiler
-                            if "method_scores" in doc.metadata:
-                                st.write(f"**Kalite Skorları:** {doc.metadata['method_scores']}")
+                            # PyMuPDF4LLM için ek bilgiler
+                            if "markdown_features" in doc.metadata:
+                                markdown_count = doc.metadata.get("markdown_features", 0)
+                                if markdown_count > 0:
+                                    st.write(f"**Markdown Özellikleri:** {markdown_count} (başlık, tablo, format)")
                             
                             st.write(f"**İçerik:** {doc.page_content[:300]}...")
                             sources.append(f"{source} - Sayfa {page}")
@@ -386,11 +341,8 @@ if st.session_state.rag_chain:
                 })
     
     # Sohbeti temizle butonu
-    
     if st.button("🗑️ Sohbeti Temizle"):
         st.session_state.chat_history = []
-        if st.session_state.rag_chain:
-            st.session_state.rag_chain.clear_memory() 
         st.rerun()
 
 else:
@@ -398,77 +350,75 @@ else:
     st.info("👈 Başlamak için sol tarafdan PDF dosyalarınızı yükleyin.")
     
     # Kurulum talimatları
-    if not FOUR_METHOD_AVAILABLE:
-        with st.expander("⚙️ 4-Yöntem PDF İşleme Kurulumu"):
+    if not PYMUPDF4LLM_AVAILABLE:
+        with st.expander("⚙️ PyMuPDF4LLM Kurulumu"):
             st.markdown("""
-            **Adım 1: Standart kütüphaneleri kurun**
-            ```bash
-            pip install PyMuPDF pdfplumber pytesseract Pillow
-            ```
-            
-            **Adım 2: PyMuPDF4LLM kurun (LLM optimize)**
+            **PyMuPDF4LLM Kurulumu:**
             ```bash
             pip install pymupdf4llm
             ```
-            
-            **Adım 3: Tesseract OCR kurun**
-            - **Windows**: [Tesseract İndir](https://github.com/UB-Mannheim/tesseract/wiki)
-            - **macOS**: `brew install tesseract tesseract-lang`
-            - **Linux**: `sudo apt install tesseract-ocr tesseract-ocr-tur`
-            
-            **Adım 4: Uygulamayı yeniden başlatın**
-            
-            Kurulumdan sonra terminalde `Ctrl+C` ile uygulamayı durdurun ve tekrar başlatın.
-            """)
-    
-    # Kullanım kılavuzu
-    with st.expander("Özellikler ve Kullanım"):
-        st.markdown("""
-        **Modlar:**
-        - **Standart**: Hızlı, standart PDF okuma (PyPDFLoader)
-        - **Boss Mode**: 4 farklı yöntemle analiz yapar ve en iyisini seçer.
-        
-        **Boss Mode Avantajları:**
-        - **PyMuPDF**: Hızlı, genel amaçlı
-        - **pdfplumber**: Tablo algılama ve çıkarma
-        - **OCR**: Taranmış PDF'leri okur (Türkçe destekli)
-        - **PyMuPDF4LLM**: LLM için optimize edilmiş.
-        
-        **Akıllı Seçim Sistemi:**
-        - Her sayfa için 4 yöntemi dener
-        - Kalite skoruna göre en iyisini seçer
-        - Tablo varsa pdfplumber'ı tercih eder
-        - Görsel PDF'lerde OCR'yi kullanır
-        - LLM uyumluluğu için PyMuPDF4LLM'yi optimize eder
-        
-        **Debug Özelliği:**
-        - 4 yöntemin karşılaştırmasını yapar
-        - Hangi yöntemin hangi sayfalarda başarılı olduğunu gösterir
-        - Kalite skorlarını analiz eder
-        - Detaylı raporlar oluşturur
-        """)
-    
-    # PyMuPDF4LLM hakkında ek bilgi
-    if not PYMUPDF4LLM_AVAILABLE:
-        with st.expander("🆕 PyMuPDF4LLM Nedir?"):
-            st.markdown("""
-            **PyMuPDF4LLM**, PDF içeriğini LLM ve RAG sistemleri için optimize edilmiş 
-            formatta çıkarmaya yönelik gelişmiş bir kütüphanedir.
             
             **Özellikler:**
             - 📝 GitHub uyumlu Markdown çıktısı
-            - 📊 Çok-kolonlu sayfa desteği
+            - 📊 Gelişmiş tablo tanıma ve çıkarma
             - 🖼️ Görsel ve grafik referansları
-            - 📑 Sayfa bazında parçalama
-            - 🎯 LlamaIndex entegrasyonu
-            - ⚡ Başlık algılama ve formatlamaş
-            - 📋 Tablo tanıma ve Markdown tablosu
+            - 📑 Sayfa bazında yapılandırılmış parçalama
+            - 🎯 LLM ve RAG sistemleri için optimize edilmiş
+            - ⚡ Başlık algılama ve hiyerarşik formatlar
             
-            **Kurulum:**
-            ```bash
-            pip install pymupdf4llm
-            ```
-            
-            Bu kütüphane özellikle RAG sistemlerinde daha iyi sonuçlar verir 
-            çünkü çıktısı LLM'lerin anlayabileceği şekilde yapılandırılmıştır.
+            **Kurulumdan sonra:**
+            Uygulamayı yeniden başlatın (`Ctrl+C` ile durdurup tekrar çalıştırın)
             """)
+    
+    # Kullanım kılavuzu
+    with st.expander("🤖 PyMuPDF4LLM Özellikleri"):
+        st.markdown("""
+        **PyMuPDF4LLM ile Neler Yapabilir:**
+        
+        **📝 Markdown Çıktısı:**
+        - GitHub uyumlu Markdown formatı
+        - Başlıklar, listeler, tablolar otomatik formatlanır
+        - LLM'ler için optimize edilmiş yapı
+        
+        **📊 Gelişmiş Tablo İşleme:**
+        - Karmaşık tabloları Markdown tablosu olarak çıkarır
+        - Çok-kolonlu tabloları doğru şekilde tanır
+        - Tablo verilerini yapılandırılmış formatta sunar
+        
+        **🔍 Akıllı İçerik Tanıma:**
+        - Başlık seviyelerini otomatik belirler
+        - Listele ri ve numaralı listeleri tanır
+        - Vurguları (**kalın**, *italik*) korur
+        
+        **⚡ RAG Sistemi Optimizasyonu:**
+        - LLM'lerin daha iyi anlayabileceği format
+        - Bağlam korunarak parçalama
+        - Daha doğru soru-cevap sonuçları
+        
+        **🎯 Kullanım Senaryoları:**
+        - Teknik dökümanlar
+        - Rapor ve tablolar
+        - Akademik yayınlar
+        - Karmaşık layoutlar
+        """)
+    
+    # Karşılaştırma tablosu
+    with st.expander("⚖️ Standart vs PyMuPDF4LLM Karşılaştırması"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**⚡ Standart PDF İşleme:**")
+            st.write("✅ Hızlı işleme")
+            st.write("✅ Basit kurulum")
+            st.write("❌ Ham metin çıktısı")
+            st.write("❌ Tablo formatı korunmaz")
+            st.write("❌ Yapı bilgisi kaybolur")
+        
+        with col2:
+            st.write("**🤖 PyMuPDF4LLM:**")
+            st.write("✅ LLM optimize çıktı")
+            st.write("✅ Markdown formatı")
+            st.write("✅ Tablo yapısı korunur")
+            st.write("✅ Başlık hiyerarşisi")
+            st.write("✅ Daha iyi RAG sonuçları")
+            st.write("❓ Ek kurulum gerekli")
