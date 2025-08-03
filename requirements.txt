@@ -1,42 +1,31 @@
-# PDF RAG Chat System - Python Dependencies
+# AselBoss AI - PDF RAG System
+# Gerekli tüm kütüphaneler
 
-# Core Web Framework
+# Web Framework
 streamlit>=1.28.0
 
-# LangChain Core
+# LangChain Core - RAG sistemi için
 langchain>=0.1.0
 langchain-community>=0.0.20
 
-# Embeddings & Vector Store
-sentence-transformers>=2.2.0
+# Vector Database & Embeddings
 chromadb>=0.4.15
+sentence-transformers>=2.2.0
 
-# PDF Processing - Basic (Always Available)
-pypdf>=3.17.0
-
-# PDF Processing - Advanced (Optional but Recommended for 4-Method)
+# PDF Processing - Temel
 PyMuPDF>=1.23.0
-pdfplumber>=0.10.0
-pytesseract>=0.3.10
-Pillow>=10.0.0
 
-# LLM Integration
-requests>=2.31.0
+# PDF Processing - Gelişmiş (PyMuPDF4LLM)
+pymupdf4llm>=0.0.5
 
-# PyMuPDF4LLM - Advanced PDF Processing for LLM (Optional)
-# Uncomment below line for Boss Mode full features
-# pymupdf4llm>=0.0.5
+# OCR Support (Opsiyonel - Boss Mode için)
+# opencv-python>=4.8.0  # Sadece gerekirse
+# pytesseract>=0.3.10   # Tesseract OCR wrapper
 
-# System Utilities
-pathlib2>=2.3.7; python_version < "3.4"
+# System Dependencies
+# Bu kütüphaneler Python ile birlikte gelir:
+# os, sys, pathlib, tempfile, datetime, typing, io, shutil
 
-# Additional Dependencies
-numpy>=1.21.0
-pandas>=1.3.0
-
-# Optional OCR Support (Requires Tesseract installation)
-# opencv-python>=4.8.0
-
-# Development Tools (Optional)
-# jupyter>=1.0.0
-# notebook>=7.0.0
+# İsteğe bağlı development tools
+# ipython>=8.0.0        # Debug için
+# jupyter>=1.0.0        # Notebook geliştirme için
