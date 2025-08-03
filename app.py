@@ -386,8 +386,11 @@ if st.session_state.rag_chain:
                 })
     
     # Sohbeti temizle butonu
+    
     if st.button("🗑️ Sohbeti Temizle"):
         st.session_state.chat_history = []
+        if st.session_state.rag_chain:
+            st.session_state.rag_chain.clear_memory() 
         st.rerun()
 
 else:
