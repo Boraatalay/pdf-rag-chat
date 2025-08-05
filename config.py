@@ -19,3 +19,10 @@ OLLAMA_BASE_URL = "http://localhost:11434"
 # Uygulama ayarları streamlit run /Users/bora/Desktop/test/app.py streamlit run app.py
 APP_TITLE = "AselBoss AI"
 APP_DESCRIPTION = "AselBoss AI - PDF Belgeleri ile Soru-Cevap Uygulaması"
+
+
+# Developer mode ayarları
+DEFAULT_TEMPERATURE = 0.1
+MIN_TEMPERATURE = 0.0
+MAX_TEMPERATURE = 1.0
+TEMPERATURE_STEP = 0.1

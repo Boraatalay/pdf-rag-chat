@@ -4,6 +4,12 @@ import sys
 from pathlib import Path
 import tempfile
 
+from config import (
+    DEFAULT_TEMPERATURE, MIN_TEMPERATURE, MAX_TEMPERATURE, TEMPERATURE_STEP
+)
+
+
+
 # Proje dizinini Python path'ine ekle
 project_root = Path(__file__).parent
 if str(project_root) not in sys.path:
@@ -42,6 +48,22 @@ st.set_page_config(
     page_icon="📚",
     layout="wide"
 )
+# set_page_config'den sonra ekleyin:
+st.markdown("""
+<style>
+.developer-mode {
+    background-color: #1e1e1e;
+    border: 1px solid #4CAF50;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 5px 0;
+}
+.temperature-indicator {
+    font-weight: bold;
+    color: #FF6B35;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Dizinleri oluştur
 PDF_DIR.mkdir(parents=True, exist_ok=True)
@@ -56,6 +78,19 @@ if 'rag_chain' not in st.session_state:
     st.session_state.rag_chain = None
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
+    
+if 'developer_mode' not in st.session_state:
+    st.session_state.developer_mode = False
+if 'temperature' not in st.session_state:
+    st.session_state.temperature = DEFAULT_TEMPERATURE
+if 'temperature_changed' not in st.session_state:
+    st.session_state.temperature_changed = False
+if 'max_tokens' not in st.session_state:
+    st.session_state.max_tokens = 2000
+if 'context_chunks' not in st.session_state:
+    st.session_state.context_chunks = 15  
+if 'prompt_style' not in st.session_state:
+    st.session_state.prompt_style = "Standart"
 
 def process_uploaded_pdfs(uploaded_files, debug_mode=False):
     """Yüklenen PDF'leri PyMuPDF4LLM ile işle"""
@@ -122,117 +157,213 @@ def create_or_update_vectorstore(documents):
             embedding_manager.add_documents(documents)
             st.session_state.vectorstore = embedding_manager.load_vectorstore()
     
-    # RAG chain'i güncelle
+    # RAG chain'i güncelle - temperature ile
     st.session_state.rag_chain = RAGChain(
         st.session_state.vectorstore,
         OLLAMA_MODEL,
         OLLAMA_BASE_URL
     )
+    
+    # Mevcut temperature'ı uygula
+    if hasattr(st.session_state, 'temperature'):
+        st.session_state.rag_chain.update_temperature(st.session_state.temperature)
 
 # Ana başlık
 st.title("📚 " + APP_TITLE)
 st.markdown(APP_DESCRIPTION)
 
 # Sidebar
+# Sidebar
 with st.sidebar:
-    st.header("📁 PDF Yükleme")
+   st.header("📁 PDF Yükleme")
+   
+   # Debug modu
+   debug_mode = st.checkbox(
+       "🐛 Debug Modu", 
+       help="Metin çıkarma sürecini detaylı analiz eder"
+   )
+   
+   # Developer Mode bölümü
+   st.divider()
+   st.subheader("👨‍💻 Developer Mode")
+
+   # Developer mode toggle
+   developer_mode = st.checkbox(
+       "🛠️ Developer Mode",
+       value=st.session_state.developer_mode,
+       help="Gelişmiş ayarlara erişim"
+   )
+
+   # Developer mode değişikliğini takip et
+   if developer_mode != st.session_state.developer_mode:
+       st.session_state.developer_mode = developer_mode
+       if not developer_mode:
+           # Developer mode kapatıldığında temperature'ı sıfırla
+           st.session_state.temperature = DEFAULT_TEMPERATURE
+           st.session_state.temperature_changed = True
+
+   # Developer mode açıksa ek seçenekleri göster
+   if st.session_state.developer_mode:
+       st.markdown("**🔧 Gelişmiş Ayarlar:**")
+       
+       # Temperature slider
+       new_temperature = st.slider(
+           "🌡️ Temperature (Yaratıcılık Seviyesi)",
+           min_value=MIN_TEMPERATURE,
+           max_value=MAX_TEMPERATURE,
+           value=st.session_state.temperature,
+           step=TEMPERATURE_STEP,
+           help="0.0 = Deterministik, 1.0 = Çok yaratıcı"
+       )
+       
+       
+       # Temperature değişikliğini kontrol et
+       if new_temperature != st.session_state.temperature:
+           st.session_state.temperature = new_temperature
+           st.session_state.temperature_changed = True
+           
+           # RAG chain'i yeniden oluştur
+           if st.session_state.rag_chain:
+               st.session_state.rag_chain.update_temperature(new_temperature)
+               st.success(f"🌡️ Temperature {new_temperature} olarak güncellendi!")
+       
+       # Temperature açıklama
+       temp_description = {
+           0.0: "🔒 Tamamen deterministik - Aynı cevaplar",
+           0.1: "📚 Çok tutarlı - Minimal varyasyon", 
+           0.3: "⚖️ Dengeli - Orta seviye yaratıcılık",
+           0.5: "🎨 Yaratıcı - Çeşitli cevaplar",
+           0.7: "🚀 Çok yaratıcı - Özgün yaklaşımlar",
+           1.0: "🎲 Maksimum yaratıcılık - Öngörülemez"
+       }
+       
+       # En yakın temperature açıklamasını bul
+       closest_temp = min(temp_description.keys(), key=lambda x: abs(x - new_temperature))
+       st.info(f"**Mevcut Mod:** {temp_description[closest_temp]}")
+       
+       # Sistem bilgileri
+       st.markdown("**📊 Sistem Bilgileri:**")
+       st.write(f"• Model: {OLLAMA_MODEL}")
+       st.write(f"• Chunk Size: {CHUNK_SIZE}")
+       st.write(f"• Chunk Overlap: {CHUNK_OVERLAP}")
+       
+       if st.session_state.vectorstore:
+           # Veritabanı istatistikleri
+           try:
+               collection_count = st.session_state.vectorstore._collection.count()
+               st.write(f"• Vektör Sayısı: {collection_count:,}")
+           except:
+               st.write("• Vektör Sayısı: Hesaplanamadı")
+
+
     
-    # Debug modu
-    debug_mode = st.checkbox(
-        "🐛 Debug Modu", 
-        help="Metin çıkarma sürecini detaylı analiz eder"
-    )
-    
-    uploaded_files = st.file_uploader(
-        "PDF dosyalarını seçin",
-        type=['pdf'],
-        accept_multiple_files=True
-    )
-    
-    if uploaded_files:
-        if st.button("PDF'leri İşle", type="primary"):
-            documents = process_uploaded_pdfs(uploaded_files, debug_mode)
-            
-            if documents:
-                create_or_update_vectorstore(documents)
-                st.success(f"✅ {len(uploaded_files)} PDF başarıyla işlendi!")
-                
-                if debug_mode:
-                    st.info(f"📁 Debug dosyaları 'debug_output' klasörüne kaydedildi")
-                
-                # İşleme istatistikleri
-                total_chunks = len(documents)
-                total_chars = sum(len(doc.page_content) for doc in documents)
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Toplam Parça", total_chunks)
-                with col2:
-                    st.metric("Toplam Karakter", f"{total_chars:,}")
-                
-                # PyMuPDF4LLM istatistikleri
-                if documents:
-                    total_markdown = sum(doc.metadata.get("markdown_features", 0) for doc in documents)
-                    st.write("**📊 PyMuPDF4LLM İstatistikleri:**")
-                    st.write(f"• Markdown özellikleri: {total_markdown}")
-                    st.write(f"• Format: GitHub uyumlu Markdown")
-                    st.write(f"• LLM optimizasyonu: Aktif")
-            else:
-                st.error("❌ Hiçbir PDF işlenemedi!")
-    
-    # Mevcut PDF'leri göster
-    if PDF_DIR.exists():
-        pdf_files = list(PDF_DIR.glob("*.pdf"))
-        if pdf_files:
-            st.subheader("📄 Yüklü PDF'ler")
-            for pdf_file in pdf_files:
-                st.text(f"• {pdf_file.name}")
-    
-    # Debug dosyalarını göster
-    if debug_mode and DEBUG_DIR.exists():
-        debug_files = list(DEBUG_DIR.glob("*.txt"))
-        if debug_files:
-            st.subheader("🐛 Debug Dosyaları")
-            
-            # Sadece PyMuPDF4LLM dosyalarını göster
-            pymupdf4llm_files = [f for f in debug_files if "_pymupdf4llm_" in f.name]
-            
-            if pymupdf4llm_files:
-                st.write("**🤖 PyMuPDF4LLM İşleme:**")
-                for debug_file in sorted(pymupdf4llm_files, reverse=True)[:3]:
-                    st.text(f"• {debug_file.name}")
-            
-            if st.button("🗑️ Debug Dosyalarını Temizle"):
-                for file in debug_files:
-                    file.unlink()
-                st.success("Debug dosyaları temizlendi!")
-                st.rerun()
-    
-    # Sistem durumu
-    st.divider()
-    st.subheader("🔧 Sistem Durumu")
-    
-    if PYMUPDF4LLM_AVAILABLE:
-        st.success("✅ PyMuPDF4LLM aktif")
-        st.write("🤖 LLM optimize işleme mevcut")
-        st.write("📝 Markdown çıktı formatı")
-        st.write("📊 Gelişmiş tablo tanıma")
-    else:
-        st.error("❌ PyMuPDF4LLM mevcut değil!")
-        st.write("Kurulum için:")
-        st.code("pip install pymupdf4llm")
-    
-    if st.session_state.vectorstore:
-        st.success("✅ Vektör veritabanı hazır")
-        st.success("✅ Soru-cevap sistemi aktif")
-    else:
-        st.warning("⚠️ Lütfen PDF yükleyin")
+   
+
+
+
+   # PDF uploader - Developer mode dışında
+   uploaded_files = st.file_uploader(
+       "PDF dosyalarını seçin",
+       type=['pdf'],
+       accept_multiple_files=True
+   )
+   
+   if uploaded_files:
+       if st.button("PDF'leri İşle", type="primary"):
+           documents = process_uploaded_pdfs(uploaded_files, debug_mode)
+           
+           if documents:
+               create_or_update_vectorstore(documents)
+               st.success(f"✅ {len(uploaded_files)} PDF başarıyla işlendi!")
+               
+               if debug_mode:
+                   st.info(f"📁 Debug dosyaları 'debug_output' klasörüne kaydedildi")
+               
+               # İşleme istatistikleri
+               total_chunks = len(documents)
+               total_chars = sum(len(doc.page_content) for doc in documents)
+               
+               col1, col2 = st.columns(2)
+               with col1:
+                   st.metric("Toplam Parça", total_chunks)
+               with col2:
+                   st.metric("Toplam Karakter", f"{total_chars:,}")
+               
+               # PyMuPDF4LLM istatistikleri
+               if documents:
+                   total_markdown = sum(doc.metadata.get("markdown_features", 0) for doc in documents)
+                   st.write("**📊 PyMuPDF4LLM İstatistikleri:**")
+                   st.write(f"• Markdown özellikleri: {total_markdown}")
+                   st.write(f"• Format: GitHub uyumlu Markdown")
+                   st.write(f"• LLM optimizasyonu: Aktif")
+           else:
+               st.error("❌ Hiçbir PDF işlenemedi!")
+   
+   # Mevcut PDF'leri göster
+   if PDF_DIR.exists():
+       pdf_files = list(PDF_DIR.glob("*.pdf"))
+       if pdf_files:
+           st.subheader("📄 Yüklü PDF'ler")
+           for pdf_file in pdf_files:
+               st.text(f"• {pdf_file.name}")
+   
+   # Debug dosyalarını göster
+   if debug_mode and DEBUG_DIR.exists():
+       debug_files = list(DEBUG_DIR.glob("*.txt"))
+       if debug_files:
+           st.subheader("🐛 Debug Dosyaları")
+           
+           # Sadece PyMuPDF4LLM dosyalarını göster
+           pymupdf4llm_files = [f for f in debug_files if "_pymupdf4llm_" in f.name]
+           
+           if pymupdf4llm_files:
+               st.write("**🤖 PyMuPDF4LLM İşleme:**")
+               for debug_file in sorted(pymupdf4llm_files, reverse=True)[:3]:
+                   st.text(f"• {debug_file.name}")
+           
+           if st.button("🗑️ Debug Dosyalarını Temizle"):
+               for file in debug_files:
+                   file.unlink()
+               st.success("Debug dosyaları temizlendi!")
+               st.rerun()
+   
+   # Sistem durumu
+   st.divider()
+   st.subheader("🔧 Sistem Durumu")
+   
+   if PYMUPDF4LLM_AVAILABLE:
+       st.success("✅ PyMuPDF4LLM aktif")
+       st.write("🤖 LLM optimize işleme mevcut")
+       st.write("📝 Markdown çıktı formatı")
+       st.write("📊 Gelişmiş tablo tanıma")
+   else:
+       st.error("❌ PyMuPDF4LLM mevcut değil!")
+       st.write("Kurulum için:")
+       st.code("pip install pymupdf4llm")
+   
+   if st.session_state.vectorstore:
+       st.success("✅ Vektör veritabanı hazır")
+       st.success("✅ Soru-cevap sistemi aktif")
+   else:
+       st.warning("⚠️ Lütfen PDF yükleyin")
 
 # Ana içerik alanı
 if st.session_state.rag_chain:
     # Soru-cevap arayüzü
     st.header("💬 Soru-Cevap")
-    
+    if st.session_state.developer_mode:
+        current_temp = st.session_state.temperature
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            st.write(f"🌡️ **Temperature:** {current_temp}")
+        with col2:
+            if st.button("🔄 Reset"):
+                st.session_state.temperature = DEFAULT_TEMPERATURE
+                if st.session_state.rag_chain:
+                    st.session_state.rag_chain.update_temperature(DEFAULT_TEMPERATURE)
+                st.rerun()
+        with col3:
+            st.write(f"**Mode:** {'🎨' if current_temp > 0.5 else '📚'}")
     # Chat geçmişini göster
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):

@@ -4,10 +4,15 @@ from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferWindowMemory
+import requests
+import json
 
 class RAGChain:
     def __init__(self, vectorstore, model_name: str, base_url: str):
         self.vectorstore = vectorstore
+        self.model_name = model_name
+        self.base_url = base_url
+        self.temperature = 0.1
         
         # Memory ekleme - son 5 konuşmayı hatırlar
         self.memory = ConversationBufferWindowMemory(
@@ -42,44 +47,77 @@ class RAGChain:
 
 📌 Cevap:
 """
-        
-        self.PROMPT = PromptTemplate(
-            template=self.prompt_template,
-            input_variables=["context", "chat_history", "question"]
-        )
-        
-        # Ollama LLM
-        self.llm = Ollama(
-            model=model_name,
-            base_url=base_url,
-            callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),
-            temperature=0.1  # Biraz creativity için
-        )
-        
-        # ConversationalRetrievalChain kullan
-        self.qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=self.llm,
-            retriever=self.vectorstore.as_retriever(
-                search_type="similarity",
-                search_kwargs={"k": 15}
-            ),
-            memory=self.memory,
-            return_source_documents=True,
-            combine_docs_chain_kwargs={"prompt": self.PROMPT},
-            verbose=False
-        )
     
     def query(self, question: str) -> dict:
-        """Soruyu yanıtla ve kaynak belgeleri döndür - Memory ile"""
-        result = self.qa_chain.invoke({"question": question})
+        """Soruyu yanıtla - Direct Ollama API ile"""
+        
+        # Retriever ile dokümanları al
+        docs = self.vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 15}
+        ).get_relevant_documents(question)
+        
+        # Context oluştur
+        context = "\n\n".join([doc.page_content for doc in docs])
+        
+        # Memory'den chat history al
+        chat_history = ""
+        if hasattr(self.memory, 'chat_memory') and self.memory.chat_memory.messages:
+            for msg in self.memory.chat_memory.messages[-6:]:  # Son 6 mesaj
+                if hasattr(msg, 'content'):
+                    role = "İnsan" if msg.__class__.__name__ == "HumanMessage" else "Asistan"
+                    chat_history += f"{role}: {msg.content}\n"
+        
+        # Final prompt oluştur
+        final_prompt = self.prompt_template.format(
+            context=context,
+            chat_history=chat_history,
+            question=question
+        )
+        
+        # Direct Ollama API çağrısı
+        response = requests.post(f'{self.base_url}/api/generate',
+            json={
+                "model": self.model_name,
+                "prompt": final_prompt,
+                "stream": False,
+                "options": {
+                    "temperature": self.temperature,
+                    "top_p": 0.9,
+                    "top_k": 40
+                }
+            }
+        )
+        
+        if response.status_code == 200:
+            answer = response.json().get('response', 'Cevap alınamadı.')
+        else:
+            answer = f"API hatası: {response.status_code}"
+        
+        # Memory'ye ekle
+        from langchain.schema import HumanMessage, AIMessage
+        self.memory.chat_memory.add_user_message(question)
+        self.memory.chat_memory.add_ai_message(answer)
+        
         return {
-            "answer": result["answer"],
-            "source_documents": result["source_documents"]
+            "answer": answer,
+            "source_documents": docs
         }
     
     def clear_memory(self):
         """Konuşma geçmişini temizle"""
         self.memory.clear()
+
+    def update_temperature(self, temperature: float):
+        """Temperature'ı güncelle"""
+        self.memory.clear()
+        self.temperature = temperature
+        print(f"🌡️ Temperature {temperature} olarak güncellendi!")
+        print(f"🔍 Aktif Temperature: {self.temperature}")
+
+    def get_current_temperature(self) -> float:
+        """Mevcut temperature değerini döndür"""
+        return self.temperature
     
     def get_memory_summary(self):
         """Memory durumu hakkında bilgi döndür"""
