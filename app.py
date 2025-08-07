@@ -31,8 +31,7 @@ try:
     # Mevcut durumu kontrol et
     status, available_count = check_all_dependencies()
     
-    if PYMUPDF4LLM_AVAILABLE:
-        st.success(f"✅ PyMuPDF4LLM PDF işleyici aktif!")
+    
     
 except ImportError as e:
     st.error(f"❌ PyMuPDF4LLM mevcut değil: {str(e)}")
@@ -41,7 +40,6 @@ except ImportError as e:
 # Sayfa yapılandırması
 st.set_page_config(
     page_title=APP_TITLE,
-    page_icon="📚",
     layout="wide"
 )
 
@@ -63,6 +61,8 @@ if 'developer_mode' not in st.session_state:
 if 'selected_model' not in st.session_state:
     st.session_state.selected_model = OLLAMA_MODEL
 
+
+#Ollama'da mevcut modelleri getir
 def get_available_models():
     """Ollama'da mevcut modelleri getir"""
     try:
@@ -80,6 +80,8 @@ def get_available_models():
     except Exception:
         return [OLLAMA_MODEL]  # Varsayılan model
 
+
+# PDF'leri işleme fonksiyonu
 def process_uploaded_pdfs(uploaded_files, debug_mode=False):
     """Yüklenen PDF'leri PyMuPDF4LLM ile işle"""
     
@@ -96,7 +98,7 @@ def process_uploaded_pdfs(uploaded_files, debug_mode=False):
     st.info("🤖 PyMuPDF4LLM işleyici kullanılıyor...")
     
     all_documents = []
-    
+    #pdf işleme kısmı
     with st.spinner("PDF'ler işleniyor..."):
         for uploaded_file in uploaded_files:
             # Geçici dosya oluştur
@@ -113,7 +115,7 @@ def process_uploaded_pdfs(uploaded_files, debug_mode=False):
                 
                 # Başarı mesajı
                 file_chunks = [d for d in documents if d.metadata.get('source') == uploaded_file.name]
-                st.success(f"✅ {uploaded_file.name}: {len(file_chunks)} parça oluşturuldu")
+                st.success(f"✅ {uploaded_file.name} işlenmeye devam ediyor ")
                 
                 # PyMuPDF4LLM istatistikleri
                 if file_chunks:
@@ -149,7 +151,7 @@ def create_or_update_vectorstore(documents):
             st.session_state.vectorstore = embedding_manager.load_vectorstore()
     
     # RAG chain'i güncelle - seçili model ve temperature ile
-    temperature = st.session_state.get('temperature', 0.1)
+    temperature = st.session_state.get('temperature', 0.0)
     st.session_state.rag_chain = RAGChain(
         st.session_state.vectorstore,
         st.session_state.selected_model,
@@ -158,10 +160,10 @@ def create_or_update_vectorstore(documents):
     )
 
 # Ana başlık
-st.title("📚 " + APP_TITLE)
+st.title(APP_TITLE)
 st.markdown(APP_DESCRIPTION)
 
-# Sidebar
+# Sidebar Sidebar Sidebar Sidebar Sidebar Sidebar
 with st.sidebar:
     # PDF Yükleme Bölümü
     st.markdown("### 📁 PDF Yükleme")
@@ -194,14 +196,6 @@ with st.sidebar:
                 st.metric("📊 İşlenen", f"{total_chunks} parça", f"{total_chars:,} karakter")
             else:
                 st.error("❌ İşlem başarısız!")
-    
-    # Yüklü PDF'ler - kompakt gösterim
-    if PDF_DIR.exists():
-        pdf_files = list(PDF_DIR.glob("*.pdf"))
-        if pdf_files:
-            st.markdown("### 📄 Yüklü Dosyalar")
-            for pdf_file in pdf_files:
-                st.caption(f"• {pdf_file.name}")
     
     # Debug dosyaları - sadece debug modda
     if debug_mode and DEBUG_DIR.exists():
@@ -262,13 +256,13 @@ with st.sidebar:
             "Temperature",
             min_value=0.0,
             max_value=2.0,
-            value=st.session_state.get('temperature', 0.1),
+            value=st.session_state.get('temperature', 0.0),
             step=0.1,
             help="0.0 = Tutarlı, 2.0 = Yaratıcı"
         )
         
         # Temperature değiştiyse güncelle
-        if temperature != st.session_state.get('temperature', 0.1):
+        if temperature != st.session_state.get('temperature', 0.0):
             st.session_state.temperature = temperature
             
             # RAG chain'i yeniden oluştur
@@ -318,15 +312,7 @@ with st.sidebar:
             pdf_count = len(list(PDF_DIR.glob("*.pdf"))) if PDF_DIR.exists() else 0
             st.info(f"📄 İşlenen PDF sayısı: {pdf_count}")
             
-            # Veritabanı boyutu (yaklaşık)
-            try:
-                import os
-                if VECTOR_STORE_DIR.exists():
-                    total_size = sum(f.stat().st_size for f in VECTOR_STORE_DIR.rglob('*') if f.is_file())
-                    size_mb = total_size / (1024 * 1024)
-                    st.info(f"💾 Veritabanı boyutu: {size_mb:.1f} MB")
-            except:
-                st.info("💾 Veritabanı boyutu: Hesaplanamadı")
+            
         
         # Clear All Data Butonu
         st.write("**Tehlikeli İşlemler:**")
@@ -410,9 +396,7 @@ with st.sidebar:
     
     if PYMUPDF4LLM_AVAILABLE:
         st.success("✅ PyMuPDF4LLM aktif")
-        st.write("🤖 LLM optimize işleme mevcut")
-        st.write("📝 Markdown çıktı formatı")
-        st.write("📊 Gelişmiş tablo tanıma")
+        
     else:
         st.error("❌ PyMuPDF4LLM mevcut değil!")
         st.write("Kurulum için:")
@@ -532,34 +516,29 @@ else:
             Uygulamayı yeniden başlatın (`Ctrl+C` ile durdurup tekrar çalıştırın)
             """)
     
+    
     # Kullanım kılavuzu
-    with st.expander("🤖 PyMuPDF4LLM Özellikleri"):
+    with st.expander("📖 Kullanım Kılavuzu"):
         st.markdown("""
-        **PyMuPDF4LLM ile Neler Yapabilir:**
+        **🚀 AselBoss AI Nasıl Kullanılır?**
         
-        **📝 Markdown Çıktısı:**
-        - GitHub uyumlu Markdown formatı
-        - Başlıklar, listeler, tablolar otomatik formatlanır
-        - LLM'ler için optimize edilmiş yapı
+        **1. PDF Yükleme:**
+        - Sol taraftan "PDF dosyalarını seçin" butonuna tıklayın
+        - Bir veya birden fazla PDF seçin
+        - "🚀 İşle" butonuna basın
         
-        **📊 Gelişmiş Tablo İşleme:**
-        - Karmaşık tabloları Markdown tablosu olarak çıkarır
-        - Çok-kolonlu tabloları doğru şekilde tanır
-        - Tablo verilerini yapılandırılmış formatta sunar
+        **2. Soru Sorma:**
+        - Alt kısımdaki sohbet kutusuna sorunuzu yazın
+        - Enter'a basın veya gönder butonuna tıklayın
+        - AI yanıtınızı kaynakları ile birlikte verecek
         
-        **🔍 Akıllı İçerik Tanıma:**
-        - Başlık seviyelerini otomatik belirler
-        - Listele ri ve numaralı listeleri tanır
-        - Vurguları (**kalın**, *italik*) korur
+        **3. Gelişmiş Özellikler:**
+        - 🐛 **Debug:** Detaylı analiz raporları
+        - ⚙️ **Developer:** Model seçimi ve ayarlar
+        - 🗑️ **Temizle:** Verileri sıfırlama
         
-        **⚡ RAG Sistemi Optimizasyonu:**
-        - LLM'lerin daha iyi anlayabileceği format
-        - Bağlam korunarak parçalama
-        - Daha doğru soru-cevap sonuçları
-        
-        **🎯 Kullanım Senaryoları:**
-        - Teknik dökümanlar
-        - Rapor ve tablolar
-        - Akademik yayınlar
-        - Karmaşık layoutlar
+        **💡 İpuçları:**
+        - Spesifik sayfa numaraları sorun: "2. sayfada ne yazıyor?"
+        - Tablo verileri için: "Tablodaki rakamları listele"
+        - Özet için: "Bu belgeyi özetle"
         """)

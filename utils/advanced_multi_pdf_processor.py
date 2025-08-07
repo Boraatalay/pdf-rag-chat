@@ -6,6 +6,7 @@ from datetime import datetime
 import fitz  # PyMuPDF
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 # PyMuPDF4LLM import - zorunlu
 try:
@@ -15,9 +16,9 @@ except ImportError:
     PYMUPDF4LLM_AVAILABLE = False
 
 class AdvancedPDFProcessor:
-    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200, debug: bool = False):
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
+    def __init__(self, chunk_size: int = CHUNK_SIZE, chunk_overlap: int = CHUNK_OVERLAP, debug: bool = False):
+        self.chunk_size = chunk_size     
+        self.chunk_overlap = chunk_overlap 
         self.debug = debug
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,

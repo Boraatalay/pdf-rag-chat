@@ -50,7 +50,7 @@ class EmbeddingManager:
         # Metadata'yı temizle
         cleaned_documents = self.clean_metadata(documents)
         
-        # Alternatif olarak langchain'in kendi filtresini de kullanabiliriz
+        
         filtered_documents = filter_complex_metadata(cleaned_documents)
         
         vectorstore = Chroma.from_documents(
