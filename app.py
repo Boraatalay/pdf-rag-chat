@@ -320,7 +320,7 @@ with st.sidebar:
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🗑️ VektörDB Temizle", help="Sadece vektör veritabanını sil"):
+            if st.button("🗑️ VektörDB Sil", help="Sadece vektör veritabanını sil"):
                 # Vektör veritabanını sil
                 import shutil
                 if VECTOR_STORE_DIR.exists():
@@ -407,7 +407,15 @@ with st.sidebar:
         st.success("✅ Soru-cevap sistemi aktif")
     else:
         st.warning("⚠️ Lütfen PDF yükleyin")
-
+    st.divider()
+    st.markdown(
+        """
+        <div style='text-align: center; color: #666; font-size: 0.8em; font-style: italic; margin-top: 20px;'>
+            🚀 Developed by Bora Atalay
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
 # Ana içerik alanı
 if st.session_state.rag_chain:
     # Soru-cevap arayüzü
