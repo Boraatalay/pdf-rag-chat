@@ -1,5 +1,5 @@
-# AselBoss AI - PDF RAG System
-# Gerekli tüm kütüphaneler
+# AselBoss AI - PDF RAG System - Tüm Gereksinimler
+# PyMuPDF4LLM destekli gelişmiş PDF analiz sistemi
 
 # Web Framework
 streamlit>=1.28.0
@@ -12,20 +12,52 @@ langchain-community>=0.0.20
 chromadb>=0.4.15
 sentence-transformers>=2.2.0
 
-# PDF Processing - Temel
+# PDF Processing - Temel PyMuPDF
 PyMuPDF>=1.23.0
 
-# PDF Processing - Gelişmiş (PyMuPDF4LLM)
+# PDF Processing - Gelişmiş (PyMuPDF4LLM) - ANA BAĞIMLILIK
 pymupdf4llm>=0.0.5
 
+# LangChain için gerekli bağımlılıklar
+langchain-core>=0.1.0
+pydantic>=2.0.0
+pydantic-core
+
+# Embeddings ve vector store için
+numpy>=1.24.0
+scipy>=1.10.0
+
+# HTTP istekleri için (Ollama API)
+requests>=2.28.0
+httpx>=0.24.0
+
+# Metin işleme
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Veri manipülasyonu
+pandas>=2.0.0
+
 # OCR Support (Opsiyonel - Boss Mode için)
-# opencv-python>=4.8.0  # Sadece gerekirse
-# pytesseract>=0.3.10   # Tesseract OCR wrapper
+# Sadece gerektiğinde uncomment edin:
+# opencv-python>=4.8.0
+# pytesseract>=0.3.10
 
-# System Dependencies
-# Bu kütüphaneler Python ile birlikte gelir:
-# os, sys, pathlib, tempfile, datetime, typing, io, shutil
+# Sistem ve path işlemleri
+pathlib
+typing-extensions>=4.5.0
 
-# İsteğe bağlı development tools
+# JSON ve YAML işleme
+pyyaml>=6.0
+
+# Logging ve debug
+colorlog>=6.7.0
+
+# Güvenlik ve validation
+validators>=0.20.0
+
+# İsteğe bağlı development tools (uncomment if needed)
 # ipython>=8.0.0        # Debug için
 # jupyter>=1.0.0        # Notebook geliştirme için
+# black>=23.0.0         # Code formatting
+# flake8>=6.0.0         # Linting
