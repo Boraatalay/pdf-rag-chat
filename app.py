@@ -448,47 +448,106 @@ with st.sidebar:
         """, 
         unsafe_allow_html=True
     )
-# Ana içerik alanı
+# Ana içerik alanı - Chat kısmı için güncelleme
 if st.session_state.rag_chain:
     # Soru-cevap arayüzü
     st.header("💬 Soru-Cevap")
     
     # Chat geçmişini göster
-    for message in st.session_state.chat_history:
+    for i, message in enumerate(st.session_state.chat_history):
         with st.chat_message(message["role"]):
             st.write(message["content"])
+            
+            # Eğer assistant mesajıysa ve yanıt süresi varsa göster
+            if message["role"] == "assistant" and "response_time" in message:
+                st.caption(f"⏱️ {message['response_time']:.1f} saniyede yanıtlandı")
+            
             if "sources" in message:
                 with st.expander("📎 Kaynaklar"):
                     for source in message["sources"]:
                         st.write(f"• {source}")
     
+    # CSS animasyonu ekle
+    st.markdown("""
+    <style>
+    @keyframes slideUp {
+        0% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .slide-up-animation {
+        animation: slideUp 0.5s ease-out;
+    }
+    
+    /* Chat input animasyonu için */
+    .stChatInput > div > div {
+        transition: all 0.3s ease;
+    }
+    
+    /* Mesaj baloncuk efekti */
+    .chat-message-slide {
+        animation: slideUp 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+        transform-origin: bottom;
+    }
+    
+    /* Typing indicator */
+    .typing-indicator {
+        display: inline-block;
+        animation: blink 1.4s infinite both;
+    }
+    
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Soru girişi
     if question := st.chat_input("PDF'ler hakkında sorunuzu yazın..."):
-        # Kullanıcı sorusunu ekle
+        # Başlangıç zamanını kaydet
+        start_time = time.time()
+        
+        # Kullanıcı sorusunu animasyonlu olarak ekle
         st.session_state.chat_history.append({"role": "user", "content": question})
         
+        # Kullanıcı mesajını animasyonlu göster
         with st.chat_message("user"):
-            st.write(question)
+            st.markdown(f'<div class="slide-up-animation">{question}</div>', unsafe_allow_html=True)
         
         # Cevap üret
         with st.chat_message("assistant"):
-            with st.spinner("Düşünüyorum..."):
+            with st.spinner("🤔 Düşünüyorum..."):
                 response = st.session_state.rag_chain.query(question)
+                
+                # Yanıt süresini hesapla
+                response_time = time.time() - start_time
                 
                 # Yazma efekti ile cevabı göster
                 message_placeholder = st.empty()
                 full_response = ""
                 
-                # Kelime kelime yazma efekti
-                import time
+                # Kelime kelime yazma efekti (biraz daha hızlı)
                 words = response["answer"].split()
                 for word in words:
                     full_response += word + " "
-                    message_placeholder.markdown(full_response + "▌")
-                    time.sleep(0.05)
+                    message_placeholder.markdown(
+                        f'<div class="slide-up-animation">{full_response}<span class="typing-indicator">▌</span></div>', 
+                        unsafe_allow_html=True
+                    )
+                    time.sleep(0.03)  # Biraz daha hızlı yazma
                 
                 # Son halini göster (cursor'ı kaldır)
-                message_placeholder.markdown(full_response)
+                message_placeholder.markdown(f'<div class="slide-up-animation">{full_response}</div>', unsafe_allow_html=True)
+                
+                # Yanıt süresini göster
+                st.caption(f"⏱️ {response_time:.1f} saniyede yanıtlandı")
                 
                 # Kaynakları göster
                 sources = []
@@ -519,66 +578,270 @@ if st.session_state.rag_chain:
                             st.write(f"**İçerik:** {doc.page_content[:300]}...")
                             sources.append(f"{source} - Sayfa {page}")
                 
-                # Cevabı geçmişe ekle
+                # Cevabı geçmişe ekle (yanıt süresi ile birlikte)
                 st.session_state.chat_history.append({
                     "role": "assistant",
                     "content": response["answer"],
-                    "sources": sources
+                    "sources": sources,
+                    "response_time": response_time
                 })
     
     # Sohbeti temizle butonu
-    if st.button("🗑️ Sohbeti Temizle"):
-        st.session_state.chat_history = []
-        st.rerun()
+    col1, col2 = st.columns([4, 1])
+    with col2:
+        if st.button("🗑️ Sohbeti Temizle", use_container_width=True):
+            st.session_state.chat_history = []
+            st.success("✅ Sohbet temizlendi!")
+            time.sleep(0.5)  # Kısa bir bekleme
+            st.rerun()
 
 else:
-    # Hoş geldin mesajı
-    st.info("👈 Başlamak için sol taraftan PDF dosyalarınızı yükleyin.")
+    # Modern Hero Section
+    st.markdown("""
+    <div style='text-align: center; padding: 3rem 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                border-radius: 15px; margin-bottom: 2rem; color: white;'>
+        <h1 style='font-size: 3rem; margin-bottom: 1rem; font-weight: 700;'>
+            🚀 AselBoss AI'ya Hoş Geldiniz
+        </h1>
+        <p style='font-size: 1.3rem; margin-bottom: 1rem; opacity: 0.9;'>
+            PDF belgelerinizi akıllı AI ile sorgulayın
+        </p>
+        <p style='font-size: 1rem; opacity: 0.8;'>
+            PyMuPDF4LLM teknolojisi ile güçlendirilmiş gelişmiş RAG sistemi
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Kurulum talimatları
+    # Quick Start Guide
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        <div style='background: #f8f9fa; padding: 2rem; border-radius: 12px; text-align: center; 
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 4px solid #007bff;'>
+            <h3 style='color: #007bff; margin-bottom: 1rem;'>📁 1. PDF Yükleyin</h3>
+            <p style='color: #6c757d; line-height: 1.6;'>
+                Sol panelden PDF dosyalarınızı seçin ve işleme başlatın. 
+                Birden fazla PDF aynı anda yükleyebilirsiniz.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style='background: #f8f9fa; padding: 2rem; border-radius: 12px; text-align: center; 
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 4px solid #28a745;'>
+            <h3 style='color: #28a745; margin-bottom: 1rem;'>💬 2. Soru Sorun</h3>
+            <p style='color: #6c757d; line-height: 1.6;'>
+                Belgeleriniz hakkında doğal dilde sorularınızı yazın. 
+                AI size detaylı ve kaynaklı cevaplar verecek.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div style='background: #f8f9fa; padding: 2rem; border-radius: 12px; text-align: center; 
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 4px solid #ffc107;'>
+            <h3 style='color: #e8900c; margin-bottom: 1rem;'>🎯 3. Analiz Edin</h3>
+            <p style='color: #6c757d; line-height: 1.6;'>
+               Kapsamlı analizler, detaylı tablo verileri ve özet bilgilere ulaşmak için sorularınızı net ve çok yönlü biçimde tasarlayın; 
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Features Section
+    st.markdown("""
+    <div style='background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%); 
+                border-radius: 15px; padding: 2rem; margin: 2rem 0; 
+                border: 1px solid #e9ecef; box-shadow: 0 8px 16px rgba(0,0,0,0.1);'>
+        <h2 style='text-align: center; color: #2c3e50; margin-bottom: 2rem; font-weight: 600;'>
+            ✨ Güçlü Özellikler
+        </h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Feature Cards
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div style='background: white; padding: 1.5rem; border-radius: 10px; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1rem; border-left: 3px solid #e74c3c;'>
+            <h4 style='color: #e74c3c; margin-bottom: 1rem;'>🤖 PyMuPDF4LLM Teknolojisi</h4>
+            <ul style='color: #6c757d; line-height: 1.6; margin-left: 1rem;'>
+                <li>GitHub uyumlu Markdown çıktısı</li>
+                <li>Gelişmiş tablo tanıma ve çıkarma</li>
+                <li>Akıllı sayfa birleştirme algoritması</li>
+                <li>LLM ve RAG sistemleri için optimize edilmiş</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div style='background: white; padding: 1.5rem; border-radius: 10px; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1rem; border-left: 3px solid #9b59b6;'>
+            <h4 style='color: #9b59b6; margin-bottom: 1rem;'>🧠 Akıllı Hafıza Sistemi</h4>
+            <ul style='color: #6c757d; line-height: 1.6; margin-left: 1rem;'>
+                <li>Son 5 konuşmayı hatırlama</li>
+                <li>Bağlamsal soru-cevap deneyimi</li>
+                <li>Önceki cevaplara referans verme</li>
+                <li>Konuşma sürekliliği</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style='background: white; padding: 1.5rem; border-radius: 10px; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1rem; border-left: 3px solid #3498db;'>
+            <h4 style='color: #3498db; margin-bottom: 1rem;'>🔍 Gelişmiş RAG Sistemi</h4>
+            <ul style='color: #6c757d; line-height: 1.6; margin-left: 1rem;'>
+                <li>Vektör tabanlı akıllı arama</li>
+                <li>Çoklu PDF desteği</li>
+                <li>Kaynak takibi ve referanslar</li>
+                <li>Yüksek doğruluk oranı</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div style='background: white; padding: 1.5rem; border-radius: 10px; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1rem; border-left: 3px solid #e67e22;'>
+            <h4 style='color: #e67e22; margin-bottom: 1rem;'>⚙️ Kişiselleştirme</h4>
+            <ul style='color: #6c757d; line-height: 1.6; margin-left: 1rem;'>
+                <li>Farklı AI modelleri seçimi</li>
+                <li>Yaratıcılık seviyesi ayarı</li>
+                <li>Debug ve analiz modları</li>
+                <li>Gelişmiş parametre kontrolü</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Setup Section - Conditional
     if not PYMUPDF4LLM_AVAILABLE:
-        with st.expander("⚙️ PyMuPDF4LLM Kurulumu"):
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); 
+                    border-radius: 12px; padding: 2rem; margin: 2rem 0; color: white; text-align: center;'>
+            <h3 style='margin-bottom: 1rem;'>⚙️ Kurulum Gerekli</h3>
+            <p style='font-size: 1.1rem; margin-bottom: 1.5rem; opacity: 0.9;'>
+                Tam özellikli deneyim için PyMuPDF4LLM kurulumu gerekiyor
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        with st.expander("🛠️ Hızlı Kurulum Rehberi", expanded=True):
+            tab1, tab2 = st.tabs(["💻 Kurulum", "📋 Özellikler"])
+            
+            with tab1:
+                st.markdown("""
+                **1️⃣ PyMuPDF4LLM Kurulumu:**
+                ```bash
+                pip install pymupdf4llm
+                ```
+                
+                **2️⃣ Uygulamayı Yeniden Başlatın:**
+                - Terminal'de `Ctrl+C` ile durdurun
+                - `streamlit run app.py` ile tekrar başlatın
+                
+                **3️⃣ Hazır! 🎉**
+                - Artık tüm gelişmiş özellikler aktif
+                """)
+                
+                st.info("💡 **İpucu:** Kurulum sonrası sayfayı yenileyin")
+                
+            with tab2:
+                st.markdown("""
+                **PyMuPDF4LLM ile Elde Edeceğiniz Özellikler:**
+                
+                ✅ **Markdown Formatı:** GitHub uyumlu çıktılar  
+                ✅ **Akıllı Tablolar:** Karmaşık tabloları anlama  
+                ✅ **Görsel Referanslar:** Şema ve grafik tanıma  
+                ✅ **Sayfa Birleştirme:** Kelime devamlarını algılama  
+                ✅ **Hiyerarşik Başlıklar:** Doküman yapısını koruma  
+                ✅ **LLM Optimizasyonu:** RAG için özel tasarım  
+                """)
+    
+    else:
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+                    border-radius: 12px; padding: 2rem; margin: 2rem 0; color: white; text-align: center;'>
+            <h3 style='margin-bottom: 1rem;'>✅ Sistem Hazır!</h3>
+            <p style='font-size: 1.1rem; margin-bottom: 1rem; opacity: 0.9;'>
+                PyMuPDF4LLM aktif - Tüm gelişmiş özellikler kullanılabilir
+            </p>
+            <p style='font-size: 0.9rem; opacity: 0.8;'>
+                👈 Sol panelden PDF yükleyerek başlayın
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Usage Examples
+    with st.expander("💡 Örnek Kullanım Senaryoları", expanded=False):
+        col1, col2 = st.columns(2)
+        
+        with col1:
             st.markdown("""
-            **PyMuPDF4LLM Kurulumu:**
-            ```bash
-            pip install pymupdf4llm
-            ```
+            **📊 İş Raporları:**
+            - "Bu çeyrek satış rakamları nedir?"
+            - "En başarılı ürün hangisi?"
+            - "Geçen yıla göre artış oranı?"
             
-            **Özellikler:**
-            - 📝 GitHub uyumlu Markdown çıktısı
-            - 📊 Gelişmiş tablo tanıma ve çıkarma
-            - 🖼️ Görsel ve grafik referansları
-            - 📑 Sayfa bazında yapılandırılmış parçalama
-            - 🎯 LLM ve RAG sistemleri için optimize edilmiş
-            - ⚡ Başlık algılama ve hiyerarşik formatlar
+            **📚 Akademik Çalışmalar:**
+            - "Bu makalenin ana sonuçları nedir?"
+            - "Metodoloji bölümünü özetle"
+            - "Referans listesindeki kaynak sayısı?"
             
-            **Kurulumdan sonra:**
-            Uygulamayı yeniden başlatın (`Ctrl+C` ile durdurup tekrar çalıştırın)
+            **📋 Teknik Dokümanlar:**
+            - "API endpoint'leri nelerdir?"
+            - "Kurulum adımları nasıl?"
+            - "Sistem gereksinimleri nedir?"
+            """)
+        
+        with col2:
+            st.markdown("""
+            **⚖️ Hukuki Belgeler:**
+            - "Sözleşme şartları neler?"
+            - "Fesih maddeleri hangisi?"
+            - "Sorumluluklarım neler?"
+            
+            **🏥 Tıbbi Raporlar:**
+            - "Test sonuçları normal mi?"
+            - "Önerilen tedavi nedir?"
+            - "Kontrol tarihleri ne zaman?"
+            
+            **📈 Finansal Analizler:**
+            - "Net kar marjı nedir?"
+            - "En yüksek gider kalemi?"
+            - "Yıllık büyüme oranı?"
             """)
     
-    
-    # Kullanım kılavuzu
-    with st.expander("📖 Kullanım Kılavuzu"):
-        st.markdown("""
-        **🚀 AselBoss AI Nasıl Kullanılır?**
-        
-        **1. PDF Yükleme:**
-        - Sol taraftan "PDF dosyalarını seçin" butonuna tıklayın
-        - Bir veya birden fazla PDF seçin
-        - "🚀 İşle" butonuna basın
-        
-        **2. Soru Sorma:**
-        - Alt kısımdaki sohbet kutusuna sorunuzu yazın
-        - Enter'a basın veya gönder butonuna tıklayın
-        - AI yanıtınızı kaynakları ile birlikte verecek
-        
-        **3. Gelişmiş Özellikler:**
-        - 🐛 **Debug:** Detaylı analiz raporları
-        - ⚙️ **Developer:** Model seçimi ve ayarlar
-        - 🗑️ **Temizle:** Verileri sıfırlama
-        
-        **💡 İpuçları:**
-        - Spesifik sayfa numaraları sorun: "2. sayfada ne yazıyor?"
-        - Tablo verileri için: "Tablodaki rakamları listele"
-        - Özet için: "Bu belgeyi özetle"
-        """)
+    # Success Stories / Stats (Optional showcase)
+    st.markdown("""
+    <div style='background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); 
+                border-radius: 12px; padding: 2rem; margin: 2rem 0; color: white; text-align: center;'>
+        <h3 style='margin-bottom: 1.5rem;'>🌟 Neden AselBoss AI?</h3>
+        <div style='display: flex; justify-content: space-around; flex-wrap: wrap;'>
+            <div style='margin: 0.5rem;'>
+                <h4 style='font-size: 2rem; margin-bottom: 0.5rem;'>⚡</h4>
+                <p><strong>Hızlı İşleme</strong><br>Saniyeler içinde analiz</p>
+            </div>
+            <div style='margin: 0.5rem;'>
+                <h4 style='font-size: 2rem; margin-bottom: 0.5rem;'>🎯</h4>
+                <p><strong>Yüksek Doğruluk</strong><br>Güvenilir cevaplar</p>
+            </div>
+            <div style='margin: 0.5rem;'>
+                <h4 style='font-size: 2rem; margin-bottom: 0.5rem;'>🔒</h4>
+                <p><strong>Güvenli</strong><br>Verileriniz lokal kalır</p>
+            </div>
+            <div style='margin: 0.5rem;'>
+                <h4 style='font-size: 2rem; margin-bottom: 0.5rem;'>🚀</h4>
+                <p><strong>Gelişmiş AI</strong><br>PyMuPDF4LLM teknolojisi</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
