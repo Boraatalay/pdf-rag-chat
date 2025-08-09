@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import subprocess
 import json
+import time
 
 # Proje dizinini Python path'ine ekle
 project_root = Path(__file__).parent
@@ -160,7 +161,15 @@ def create_or_update_vectorstore(documents):
     )
 
 # Ana başlık
-st.title(APP_TITLE)
+status_colors = {
+    'ready': '🟢',
+    'processing': '🟡', 
+    'error': '🔴',
+    'idle': '⚪'
+}
+system_status = 'ready' if st.session_state.rag_chain else 'idle'
+
+st.title(f"{status_colors[system_status]} {APP_TITLE}")
 st.markdown(APP_DESCRIPTION)
 
 # Sidebar Sidebar Sidebar Sidebar Sidebar Sidebar
@@ -214,6 +223,7 @@ with st.sidebar:
     st.divider()
     if st.button("⚙️ Developer", use_container_width=True):
         st.session_state.developer_mode = not st.session_state.developer_mode
+
     
     # Developer Modu Açıksa Model Seçimi Göster
     if st.session_state.developer_mode:
@@ -253,13 +263,22 @@ with st.sidebar:
         # Temperature Slider
         st.write("**Model Yaratıcılığı:**")
         temperature = st.slider(
-            "Temperature",
-            min_value=0.0,
-            max_value=2.0,
-            value=st.session_state.get('temperature', 0.0),
-            step=0.1,
-            help="0.0 = Tutarlı, 2.0 = Yaratıcı"
+        "Temperature",
+        min_value=0.0,
+        max_value=2.0,
+        value=st.session_state.get('temperature', 0.0),
+        step=0.1,
+        help="0.0 = Tutarlı, 2.0 = Yaratıcı"
         )
+        if temperature >= 1.5:
+            st.info("🎨 Ultra yaratıcı mod aktif")
+        elif temperature >= 1.0:
+            st.info("🎯 Yaratıcı mod aktif") 
+        elif temperature >= 0.5:
+            st.info("⚖️ Dengeli mod aktif")
+        else:
+            st.info("🎯 Hassas mod aktif")
+
         
         # Temperature değiştiyse güncelle
         if temperature != st.session_state.get('temperature', 0.0):
@@ -295,6 +314,19 @@ with st.sidebar:
         if st.session_state.rag_chain:
             memory_info = st.session_state.rag_chain.get_memory_summary()
             st.info(f"🧠 {memory_info}")
+            
+            # Memory progress bar ekle
+            try:
+                message_count = len(st.session_state.rag_chain.memory.chat_memory.messages)
+                max_messages = 10  # 5 soru-cevap çifti = 10 mesaj
+                
+                progress = min(message_count / max_messages, 1.0)
+                st.progress(progress, text=f"Hafıza: {message_count}/{max_messages}")
+                
+                if progress > 0.8:
+                    st.warning("⚠️ Hafıza dolmak üzere!")
+            except:
+                pass
             
             # Memory Clear Butonu
             if st.button("🗑️ Hafızayı Temizle", help="Konuşma geçmişini sil"):
