@@ -187,6 +187,16 @@ with st.sidebar:
     # Debug modu - kompakt
     debug_mode = st.toggle("🐛 Debug", help="Detaylı analiz")
     
+ 
+
+    # Çeviri uygulamasına geçiş
+    st.divider()
+    st.markdown("### 🌍 AI Çeviri")
+    
+    if st.button("🚀 Çeviri Uygulaması", type="secondary", use_container_width=True, help="Google Çeviri benzeri AI çeviri aracı"):
+        st.switch_page("pages/translator.py")  # pages/ klasöründeki dosyaya yönlendirme
+    
+    st.caption("40+ dil • Profesyonel AI çeviri")
     if uploaded_files:
         if st.button("🚀 İşle", type="primary", use_container_width=True):
             documents = process_uploaded_pdfs(uploaded_files, debug_mode)
