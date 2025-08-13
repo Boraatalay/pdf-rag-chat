@@ -241,34 +241,141 @@ def translate_text(text: str, source_lang: str, target_lang: str, model_name: st
         }
 
 def detect_language(text: str, model_name: str) -> str:
-    """Metnin dilini tespit et"""
+    """Metnin dilini tespit et - Azerbaycan Türkçesi odaklı iyileştirme"""
     
     if not text.strip():
         return "Bilinmeyen"
     
-    # Basit örneklerle hızlı tespit
-    text_lower = text.lower()
+    # Metni temizle ve küçük harfe çevir
+    text_lower = text.lower().strip()
     
-    # Azerbaycan Türkçesi özel kelimeler
-    azeri_words = ['salam', 'necəsən', 'xahiş', 'edirəm', 'bilirəm', 'gəlirəm', 'gedirəm', 'qalxır', 'düşür', 'başlayır', 'bitir', 'mənim', 'sənin', 'onun', 'bizim', 'sizin', 'onların']
+    # Azerbaycan Türkçesi için daha kapsamlı kelime listesi
+    azeri_words = [
+        # Temel kelimeler
+        'salam', 'necəsən', 'xahiş', 'edirəm', 'bilirəm', 'gəlirəm', 'gedirəm', 
+        'qalxır', 'düşür', 'başlayır', 'bitir', 'mənim', 'sənin', 'onun', 
+        'bizim', 'sizin', 'onların',
+        
+        # Özel Azerbaycan harfleri içeren kelimeler
+        'məqsəd', 'əsas', 'məsələ', 'gələcək', 'keçmiş', 'indiki', 'həyat',
+        'işçi', 'müəllim', 'şagird', 'kitab', 'məktəb', 'universitet',
+        'təşkil', 'idarə', 'hökümət', 'vətən', 'millət', 'dövlət',
+        'şəhər', 'kənd', 'ev', 'ailə', 'uşaq', 'valideyn',
+        'təbii', 'əlbəttə', 'mütləq', 'heç', 'bəzi', 'çoxlu',
+        'nədir', 'harada', 'nə vaxt', 'necə', 'niyə', 'hansı',
+        
+        # Azerbaycan Türkçesi'ne özgü ekler ve kelime sonları
+        'ləri', 'lərin', 'də', 'da', 'dən', 'dan', 'üçün', 'ilə',
+        'ində', 'inda', 'ədir', 'edir', 'olur', 'olar', 'məli',
+        
+        # TASMUS benzeri kurumsal kelimeler
+        'təşkilat', 'qurum', 'idarə', 'şöbə', 'bölmə', 'mərkəz',
+        'institut', 'agentlik', 'komitə', 'nazirlik', 'şura'
+    ]
+    
+    # Azerbaycan Türkçesi özel karakter kalıpları
+    azeri_chars = ['ə', 'ı', 'ğ', 'ü', 'ö', 'ç', 'ş']
+    azeri_char_count = sum(1 for char in text_lower if char in azeri_chars)
+    
+    # Azerbaycan Türkçesi kelime sayısı
     azeri_count = sum(1 for word in azeri_words if word in text_lower)
     
-    # Türkçe özel kelimeler
-    turkish_words = ['merhaba', 'nasılsın', 'rica', 'ederim', 'biliyorum', 'geliyorum', 'gidiyorum', 'kalkar', 'düşer', 'başlar', 'biter', 'benim', 'senin', 'onun', 'bizim', 'sizin', 'onların']
+    # Türkçe kelimeler (Azerbaycan Türkçesi ile karışmaması için)
+    turkish_words = [
+        'merhaba', 'nasılsın', 'rica', 'ederim', 'biliyorum', 'geliyorum', 
+        'gidiyorum', 'kalkar', 'düşer', 'başlar', 'biter', 'benim', 
+        'senin', 'onun', 'bizim', 'sizin', 'onların', 'nedir', 'nerede',
+        'ne zaman', 'nasıl', 'neden', 'hangi', 'teşkilat', 'kurum'
+    ]
     turkish_count = sum(1 for word in turkish_words if word in text_lower)
     
-    # İngilizce özel kelimeler
-    english_words = ['hello', 'how', 'are', 'you', 'please', 'thank', 'know', 'come', 'go', 'start', 'finish', 'my', 'your', 'his', 'her', 'our', 'their']
+    # İngilizce kelimeler
+    english_words = [
+        'hello', 'how', 'are', 'you', 'please', 'thank', 'know', 
+        'come', 'go', 'start', 'finish', 'my', 'your', 'his', 
+        'her', 'our', 'their', 'what', 'where', 'when', 'why', 'how'
+    ]
     english_count = sum(1 for word in english_words if word in text_lower)
     
-    # Basit kelime kontrolü ile tespit
-    if azeri_count > 0:
-        return "Azerbaycan Türkçesi"
-    elif turkish_count > 0:
-        return "Türkçe"
-    elif english_count > 0:
-        return "İngilizce"
+    # Arapça kelimeler (yanlış tespit edilmesin diye)
+    arabic_words = [
+        'السلام', 'عليكم', 'كيف', 'حال', 'شكرا', 'أهلا', 'مرحبا',
+        'نعم', 'لا', 'من', 'ماذا', 'أين', 'متى', 'كيف', 'لماذا'
+    ]
+    arabic_count = sum(1 for word in arabic_words if word in text_lower)
     
+
+        # Almanca kelimeler - YENİ EKLENDİ
+    german_words = [
+        'hallo', 'wie', 'geht', 'danke', 'bitte', 'ich', 'bin', 'ist', 
+        'der', 'die', 'das', 'und', 'oder', 'aber', 'mit', 'von',
+        'zu', 'auf', 'für', 'ein', 'eine', 'haben', 'sein', 'werden',
+        'können', 'müssen', 'sollen', 'wollen', 'guten', 'tag', 'morgen'
+    ]
+
+    # Fransızca kelimeler - YENİ EKLENDİ  
+    french_words = [
+        'bonjour', 'comment', 'allez', 'vous', 'merci', 'sil', 'vous', 'plait',
+        'je', 'suis', 'il', 'elle', 'nous', 'sommes', 'êtes', 'sont',
+        'le', 'la', 'les', 'un', 'une', 'des', 'et', 'ou', 'mais',
+        'avec', 'pour', 'dans', 'sur', 'avoir', 'être', 'faire', 'aller'
+    ]
+
+    # İspanyolca kelimeler - YENİ EKLENDİ
+    spanish_words = [
+        'hola', 'como', 'esta', 'gracias', 'por', 'favor', 'yo', 'soy',
+        'tu', 'eres', 'el', 'ella', 'nosotros', 'somos', 'ustedes', 'son',
+        'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero',
+        'con', 'para', 'en', 'de', 'tener', 'ser', 'estar', 'hacer', 'ir'
+    ]
+    french_count = sum(1 for word in french_words if word in text_lower)
+    spanish_count = sum(1 for word in spanish_words if word in text_lower)
+    english_count = sum(1 for word in english_words if word in text_lower)
+    german_count = sum(1 for word in german_words if word in text_lower)
+    # Özel kalıp kontrolleri
+    special_patterns = {
+        'azeri_ending_patterns': ['ədir', 'edir', 'olur', 'ələr', 'ılır', 'ülar'],
+        'turkish_ending_patterns': ['iyor', 'ıyor', 'uyor', 'üyor', 'ler', 'lar', 'tır', 'tir', 'tur', 'tür']
+    }
+    
+    azeri_pattern_count = sum(1 for pattern in special_patterns['azeri_ending_patterns'] 
+                             if pattern in text_lower)
+    turkish_pattern_count = sum(1 for pattern in special_patterns['turkish_ending_patterns'] 
+                               if pattern in text_lower)
+    
+    # Skor hesaplama sistemi
+    # Skor hesaplama sistemi
+    # Skor hesaplama sistemi
+    azeri_score = (azeri_count * 3) + (azeri_char_count * 2) + (azeri_pattern_count * 2)
+    turkish_score = (turkish_count * 3) + (turkish_pattern_count * 2)
+    german_score = german_count * 3
+    french_score = french_count * 3
+    spanish_score = spanish_count * 3
+    english_score = english_count * 3
+    arabic_score = arabic_count * 3
+
+    # Eşik değerleri
+    min_threshold = 1
+
+    # Karar verme mantığı - Skor sıralaması ile
+    scores = {
+        "Azerbaycan Türkçesi": azeri_score,
+        "Türkçe": turkish_score,
+        "Almanca": german_score,
+        "Fransızca": french_score,
+        "İspanyolca": spanish_score,
+        "İngilizce": english_score,
+        "Arapça": arabic_score
+    }
+
+    # En yüksek skoru bul
+    max_score = max(scores.values())
+    if max_score >= min_threshold:
+        for lang, score in scores.items():
+            if score == max_score:
+                return lang
+    
+    # Eğer basit kontroller yetersizse, LLM ile tespit et
     try:
         llm = Ollama(
             model=model_name,
@@ -276,21 +383,48 @@ def detect_language(text: str, model_name: str) -> str:
             temperature=0.1
         )
         
-        # Geliştirilmiş dil tespit prompt'u
-        prompt = f"""Bu metin hangi dilde yazılmış? Seçenekler: Türkçe, İngilizce, Almanca, Fransızca, İspanyolca, Rusça, Arapça, Azerbaycan Türkçesi, Çince, Japonca
+        # Geliştirilmiş prompt - Azerbaycan Türkçesi vurgusu ile
+        prompt = f"""Bu metin hangi dilde yazılmış? DİKKAT: 'ə' harfi varsa büyük ihtimalle Azerbaycan Türkçesidir.
 
-Metin: "{text[:100]}"
+Seçenekler: 
+- Azerbaycan Türkçesi (ə, ı harfleri içeriyorsa)
+- Türkçe 
+- İngilizce
+- Almanca
+- Fransızca
+- İspanyolca
+- Rusça
+- Arapça
+- Çince
+- Japonca
 
-Sadece dil adını yaz:"""
+Analiz edilecek metin: "{text[:150]}"
+
+Özel kontrol noktaları:
+- 'ə' harfi varsa → Azerbaycan Türkçesi
+- 'məqsəd', 'əsas', 'nədir' gibi kelimeler varsa → Azerbaycan Türkçesi
+- Arapça harfler varsa → Arapça
+
+SADECE DİL ADINI YAZ:"""
         
         detected = llm.invoke(prompt).strip()
         
-        # Tespit edilen dili temizle
+        # Tespit edilen dili temizle ve normalize et
         detected = detected.replace("Dil:", "").replace(":", "").strip()
         
-        # Azerbaycan Türkçesi varyasyonları
-        if any(variant in detected.lower() for variant in ['azeri', 'azerbaycan', 'azərbaycan']):
+        # Azerbaycan Türkçesi varyasyonlarını yakala
+        azeri_variants = [
+            'azeri', 'azerbaycan', 'azərbaycan', 'azerbaijani', 
+            'azerbaycan türkçesi', 'azeri türkçesi'
+        ]
+        
+        if any(variant in detected.lower() for variant in azeri_variants):
             return "Azerbaycan Türkçesi"
+        
+        # Türkçe varyasyonları
+        turkish_variants = ['türkçe', 'turkish', 'turkce']
+        if any(variant in detected.lower() for variant in turkish_variants):
+            return "Türkçe"
         
         # Bilinen diller listesinden kontrol et
         for lang_name in LANGUAGES.keys():
@@ -299,17 +433,44 @@ Sadece dil adını yaz:"""
         
         return detected if detected else "Bilinmeyen"
         
-    except Exception:
-        return "Bilinmeyen"
+    except Exception as e:
+        # LLM hatası durumunda basit skorlama sistemini kullan
+        if azeri_score > 0:
+            return "Azerbaycan Türkçesi"
+        elif turkish_score > 0:
+            return "Türkçe" 
+        elif english_score > 0:
+            return "İngilizce"
+        else:
+            return "Bilinmeyen"
 
-# Ana başlık
-st.markdown("""
-<div class="main-header">
-    <h1 style='font-size: 3rem; margin-bottom: 1rem;'>🇹🇷 AselBoss AI Çeviri</h1>
-    <p style='font-size: 1.2rem; opacity: 0.9;'>Herhangi bir dilden Türkçe'ye otomatik çeviri</p>
-    <p style='font-size: 0.9rem; opacity: 0.8;'>40+ dil otomatik tespiti • Hızlı ve doğru Türkçe çeviriler</p>
-</div>
-""", unsafe_allow_html=True)
+# Test fonksiyonu
+def test_azeri_detection():
+    """Azerbaycan Türkçesi tespit sistemini test et"""
+    test_cases = [
+        ("Tasmusun əsas məqsədi nədir?", "Azerbaycan Türkçesi"),
+        ("Salam, necəsən?", "Azerbaycan Türkçesi"),
+        ("Bu məsələ çox vacibdir", "Azerbaycan Türkçesi"),
+        ("Merhaba, nasılsın?", "Türkçe"),
+        ("Hello, how are you?", "İngilizce"),
+        ("السلام عليكم", "Arapça"),
+        ("Təşkilatın strukturu necədir?", "Azerbaycan Türkçesi"),
+        ("Bu gün hava çox gözəldir", "Azerbaycan Türkçesi")
+    ]
+    
+    print("🧪 Azerbaycan Türkçesi Tespit Testi")
+    print("=" * 50)
+    
+    for text, expected in test_cases:
+        detected = detect_language(text, "llama3.1:8b")  # Model adı örnek
+        status = "✅" if detected == expected else "❌"
+        print(f"{status} '{text}' → {detected} (beklenen: {expected})")
+    
+    print("\n" + "=" * 50)
+
+# Test çalıştırma
+if __name__ == "__main__":
+    test_azeri_detection()
 
 # Ana uygulama
 col1, col2 = st.columns([1, 1])

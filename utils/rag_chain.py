@@ -299,7 +299,7 @@ MÜHÜVİM: Cavabını HƏMIŞƏ Azərbaycan Türkcəsində ver, istifadəçi ha
                }
        else:
            # Türkçe anahtar kelime kontrolü (orijinal)
-           pdf_unrelated_keywords = ['mutluluk', 'üzüntü', 'kod yaz', 'program', 'python', 'javascript', 'matematik', 'hesapla', 'hava durumu', 'ne haber', 'nasılsın', 'merhaba', 'selam''kaç km','kaç kilometre','mesafe','uzaklık','arası','hangi şehir','başkent',        'nüfus',      'plaka kodu',   'alan kodu', 'posta kodu''hangi renk', 'renk', 'renkli',  'mor', 'pembe', 'mavi', 'kırmızı', 'sarı',        'yeşil',  'siyah',  'beyaz', 'renk karışımı', 'hangi renklerden oluşur',   'rgb',  'hex kod'           ]      
+           pdf_unrelated_keywords = ['mutluluk', 'üzüntü', 'kod yaz', 'program','nasıl','yapılır', 'python', 'javascript', 'matematik', 'hesapla', 'hava durumu', 'ne haber', 'nasılsın', 'merhaba', 'selam''kaç km','kaç kilometre','mesafe','uzaklık','arası','hangi şehir','başkent',        'nüfus',      'plaka kodu',   'alan kodu', 'posta kodu''hangi renk', 'renk', 'renkli',  'mor', 'pembe', 'mavi', 'kırmızı', 'sarı',        'yeşil',  'siyah',  'beyaz', 'renk karışımı', 'hangi renklerden oluşur',   'rgb',  'hex kod'           ]      
            
            question_lower = question.lower()
            if any(keyword in question_lower for keyword in pdf_unrelated_keywords):

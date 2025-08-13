@@ -169,7 +169,19 @@ status_colors = {
 }
 system_status = 'ready' if st.session_state.rag_chain else 'idle'
 
-st.title(f"{status_colors[system_status]} {APP_TITLE}")
+robot_class = {
+    'ready': 'robot-ready',
+    'processing': 'robot-processing', 
+    'error': 'robot-thinking',
+    'idle': 'robot-thinking'
+}[system_status]
+
+st.markdown(f"""
+<h1>
+    <span class="robot-emoji {robot_class}">🤖</span>
+    {APP_TITLE}
+</h1>
+""", unsafe_allow_html=True)
 st.markdown(APP_DESCRIPTION)
 
 # Sidebar Sidebar Sidebar Sidebar Sidebar Sidebar
@@ -516,86 +528,275 @@ if st.session_state.rag_chain:
         0%, 50% { opacity: 1; }
         51%, 100% { opacity: 0; }
     }
+    
+    /* Robot Animasyonu */
+@keyframes robotNod {
+    0%, 70%, 100% { 
+        transform: rotateY(0deg) rotateZ(0deg); 
+    }
+    10% { 
+        transform: rotateY(-15deg) rotateZ(-5deg); 
+    }
+    20% { 
+        transform: rotateY(15deg) rotateZ(5deg); 
+    }
+    30% { 
+        transform: rotateY(-10deg) rotateZ(-3deg); 
+    }
+    40% { 
+        transform: rotateY(10deg) rotateZ(3deg); 
+    }
+    50% { 
+        transform: rotateY(0deg) rotateZ(0deg); 
+    }
+}
+
+@keyframes robotGlow {
+    0%, 100% { 
+        filter: drop-shadow(0 0 5px #4CAF50);
+    }
+    50% { 
+        filter: drop-shadow(0 0 15px #2196F3);
+    }
+}
+
+.robot-emoji {
+    display: inline-block;
+    animation: robotNod 4s ease-in-out infinite, robotGlow 3s ease-in-out infinite;
+    font-size: 1.2em;
+    margin-right: 0.5rem;
+    transform-origin: center;
+}
+
+/* Status durumuna göre farklı animasyonlar */
+.robot-thinking {
+    animation: robotNod 1s ease-in-out infinite, robotGlow 1.5s ease-in-out infinite;
+}
+
+.robot-ready {
+    animation: robotNod 4s ease-in-out infinite, robotGlow 3s ease-in-out infinite;
+}
+
+.robot-processing {
+    animation: robotNod 0.8s ease-in-out infinite, robotGlow 1s ease-in-out infinite;
+}
     </style>
     """, unsafe_allow_html=True)
     
+    
+   
     # Soru girişi
+# Soru girişi
     if question := st.chat_input("PDF'ler hakkında sorunuzu yazın..."):
-        # Başlangıç zamanını kaydet
-        start_time = time.time()
+        # 🎮 EASTER EGG KONTROLÜ
+        question_lower = question.lower().strip()
         
-        # Kullanıcı sorusunu animasyonlu olarak ekle
-        st.session_state.chat_history.append({"role": "user", "content": question})
-        
-        # Kullanıcı mesajını animasyonlu göster
-        with st.chat_message("user"):
-            st.markdown(f'<div class="slide-up-animation">{question}</div>', unsafe_allow_html=True)
-        
-        # Cevap üret
-        with st.chat_message("assistant"):
-            with st.spinner("🤔 Düşünüyorum..."):
-                response = st.session_state.rag_chain.query(question)
-                
-                # Yanıt süresini hesapla
-                response_time = time.time() - start_time
-                
-                # Yazma efekti ile cevabı göster
+        # Bora kim? Easter Egg
+        if any(keyword in question_lower for keyword in ['bora kim', 'bora nedir', 'kim bora', 'bora hakkında', 'geliştiricin kim']):
+            # Kullanıcı sorusunu ekle
+            st.session_state.chat_history.append({"role": "user", "content": question})
+            
+            with st.chat_message("user"):
+                st.markdown(f'<div class="slide-up-animation">{question}</div>', unsafe_allow_html=True)
+            
+            # Easter Egg cevabı
+            easter_egg_answer = """Bora mı? Kod yazarken dünyayı unutup, kahvesi soğuyunca fark eden; bilgisayar bozulunca da "ben sana ne yaptım?" diye trip atan kişi. Ama var ya… bana her gün aynı şeyi soruyor, bıktım artık "TASMUS'un temel hedefi nedir?" diye cevaplamaktan! 😅"""
+            
+            with st.chat_message("assistant"):
+                # Yazma efekti ile göster
                 message_placeholder = st.empty()
                 full_response = ""
                 
-                # Kelime kelime yazma efekti (biraz daha hızlı)
-                words = response["answer"].split()
+                # Kelime kelime yazma efekti
+                words = easter_egg_answer.split()
                 for word in words:
                     full_response += word + " "
                     message_placeholder.markdown(
-                        f'<div class="slide-up-animation">{full_response}<span class="typing-indicator">▌</span></div>', 
+                        f'{full_response}<span style="color: orange;">▌</span>', 
                         unsafe_allow_html=True
                     )
-                    time.sleep(0.03)  # Biraz daha hızlı yazma
+                    time.sleep(0.03)
                 
                 # Son halini göster (cursor'ı kaldır)
-                message_placeholder.markdown(f'<div class="slide-up-animation">{full_response}</div>', unsafe_allow_html=True)
+                message_placeholder.markdown(full_response)
                 
-                # Yanıt süresini göster
-                st.caption(f"⏱️ {response_time:.1f} saniyede yanıtlandı")
-                
-                # Kaynakları göster
-                sources = []
-                if response["source_documents"]:
-                    with st.expander("📎 Kaynaklar"):
-                        for i, doc in enumerate(response["source_documents"]):
-                            source = doc.metadata.get("source", "Bilinmeyen")
-                            page = doc.metadata.get("page", "?")
-                            chunk_id = doc.metadata.get("chunk_id", "?")
-                            
-                            # Çıkarma yöntemi bilgisi
-                            method = (doc.metadata.get("extraction_method") or 
-                                    doc.metadata.get("processing_method", ""))
-                            
-                            st.write(f"**Kaynak {i+1}:** {source} - Sayfa {page} - Parça {chunk_id}")
-                            if method:
-                                if method == "pymupdf4llm" or "pymupdf4llm" in method:
-                                    st.write(f"**Çıkarma Yöntemi:** 🤖 PyMuPDF4LLM (Markdown)")
-                                else:
-                                    st.write(f"**Çıkarma Yöntemi:** {method}")
-                            
-                            # PyMuPDF4LLM için ek bilgiler
-                            if "markdown_features" in doc.metadata:
-                                markdown_count = doc.metadata.get("markdown_features", 0)
-                                if markdown_count > 0:
-                                    st.write(f"**Markdown Özellikleri:** {markdown_count} (başlık, tablo, format)")
-                            
-                            st.write(f"**İçerik:** {doc.page_content[:300]}...")
-                            sources.append(f"{source} - Sayfa {page}")
-                
-                # Cevabı geçmişe ekle (yanıt süresi ile birlikte)
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": response["answer"],
-                    "sources": sources,
-                    "response_time": response_time
-                })
-    
+                # Easter Egg olduğunu belirt
+                st.caption("🎮 Easter Egg keşfettin! Geliştirici hakkında bilgi")
+            
+            # Cevabı geçmişe ekle
+            st.session_state.chat_history.append({
+                "role": "assistant", 
+                "content": easter_egg_answer,
+                "is_easter_egg": True
+            })
+            
+            # Sayfayı yenile
+            st.rerun()
+        # AselBoss ismi nereden geliyor? Easter Egg
+        elif any(keyword in question_lower for keyword in ['aselboss nereden', 'aselboss ismi', 'aselboss ne demek', 'neden aselboss', 'aselboss hikaye']):
+            # Kullanıcı sorusunu ekle
+            st.session_state.chat_history.append({"role": "user", "content": question})
+            
+            with st.chat_message("user"):
+                st.markdown(f'<div class="slide-up-animation">{question}</div>', unsafe_allow_html=True)
+            
+            # Easter Egg cevabı
+            easter_egg_answer = """Aselboss mu? Hani böyle piyasada "ben en iyisiyim" diye dolaşan biri var ya… işte ona gizliden gizliye kafa tutuyor. Belki bugün değil ama ileride, rakip falan tanımayacak. 😏"""
+            
+            with st.chat_message("assistant"):
+                # Yazma efekti (aynı kod)
+                message_placeholder = st.empty()
+                full_response = ""
+                words = easter_egg_answer.split()
+                for word in words:
+                    full_response += word + " "
+                    message_placeholder.markdown(f'{full_response}<span style="color: orange;">▌</span>', unsafe_allow_html=True)
+                    time.sleep(0.03)
+                message_placeholder.markdown(full_response)
+                st.caption("🎮 Easter Egg keşfettin! İsim hikayesi")
+            
+            st.session_state.chat_history.append({"role": "assistant", "content": easter_egg_answer, "is_easter_egg": True})
+            st.rerun()
+
+        # Heyecan yapma Easter Egg
+        elif any(keyword in question_lower for keyword in ['heyecan yapma', 'sakin ol', 'acele etme', 'yavaş ol']):
+            # Kullanıcı sorusunu ekle
+            st.session_state.chat_history.append({"role": "user", "content": question})
+            
+            with st.chat_message("user"):
+                st.markdown(f'<div class="slide-up-animation">{question}</div>', unsafe_allow_html=True)
+            
+            # Easter Egg cevabı
+            easter_egg_answer = """Heyecan yapma deme artık bana Bora önünde kaç kişi var görmüyor musun! Tamam yha, ben de insanım… pardon, chatbotum. 😏 Yanlış demiş olabilirim, ama tekrar tekrar denemeye devam et, belki bu sefer tuttururum ya da seni rezil ederim hihihih."""
+            
+            with st.chat_message("assistant"):
+                # Yazma efekti (aynı kod)
+                message_placeholder = st.empty()
+                full_response = ""
+                words = easter_egg_answer.split()
+                for word in words:
+                    full_response += word + " "
+                    message_placeholder.markdown(f'{full_response}<span style="color: orange;">▌</span>', unsafe_allow_html=True)
+                    time.sleep(0.03)
+                message_placeholder.markdown(full_response)
+                st.caption("🎮 Easter Egg keşfettin! Heyecan kontrolü")
+            
+            st.session_state.chat_history.append({"role": "assistant", "content": easter_egg_answer, "is_easter_egg": True})
+            st.rerun()
+
+        # Final konuşması Easter Egg
+        elif any(keyword in question_lower for keyword in ['final konuşması', 'staj deneyimi', 'staj hikayesi', 'staj teşekkür']):
+            # Kullanıcı sorusunu ekle
+            st.session_state.chat_history.append({"role": "user", "content": question})
+            
+            with st.chat_message("user"):
+                st.markdown(f'<div class="slide-up-animation">{question}</div>', unsafe_allow_html=True)
+            
+            # Easter Egg cevabı
+            easter_egg_answer = """30 günlük staj deneyimim, mesleki gelişimim açısından son derece değerli bir süreç oldu. Bu süre zarfında hem teknik becerilerimi geliştirme hem de iş disiplinini ve ekip çalışmasının önemini daha yakından deneyimleme fırsatı buldum. Staj süresince üzerinde çalıştığım modeli geliştirerek önemli bir aşamayı tamamlamış olmak, benim için hem gurur hem de motivasyon kaynağı oldu.
+                                Öncelikle, bana her zaman yol gösteren ve desteğini esirgemeyen Akın Amirime, bilgi ve tecrübeleriyle sürece katkı sağlayan Serkan Bey'e ve İlker Bey'e en içten teşekkürlerimi sunuyorum. Bunun yanı sıra, bu yolda bana destek olan, sorularımı sabırla yanıtlayan ve tecrübelerini paylaşan tüm değerli çalışanlara ve stajyer arkadaşlarıma da minnettarım.
+                                Bu süreç, bana yalnızca teknik açıdan değil, aynı zamanda profesyonel iş hayatının gerektirdiği sorumluluk, iletişim ve uyum konularında da önemli kazanımlar sağladı. Emeği geçen herkese bir kez daha teşekkür eder, gelecekte yollarımızın tekrar kesişmesini dilerim."""
+            
+            with st.chat_message("assistant"):
+                # Yazma efekti (aynı kod)
+                message_placeholder = st.empty()
+                full_response = ""
+                words = easter_egg_answer.split()
+                for word in words:
+                    full_response += word + " "
+                    message_placeholder.markdown(f'{full_response}<span style="color: orange;">▌</span>', unsafe_allow_html=True)
+                    time.sleep(0.02)  # Bu biraz daha uzun, yavaş yazsın
+                message_placeholder.markdown(full_response)
+                st.caption("🎮 Easter Egg keşfettin! Staj hikayesi")
+            
+            st.session_state.chat_history.append({"role": "assistant", "content": easter_egg_answer, "is_easter_egg": True})
+            st.rerun()    
+        else:
+            # NORMAL PDF SORGULAMA
+            # Robot'u processing moduna al
+            st.markdown("""
+            <script>
+            document.querySelector('.robot-emoji').className = 'robot-emoji robot-processing';
+            </script>
+            """, unsafe_allow_html=True)
+            
+            # Başlangıç zamanını kaydet
+            start_time = time.time()
+            
+            # Kullanıcı sorusunu animasyonlu olarak ekle
+            st.session_state.chat_history.append({"role": "user", "content": question})
+            
+            # Kullanıcı mesajını animasyonlu göster
+            with st.chat_message("user"):
+                st.markdown(f'<div class="slide-up-animation">{question}</div>', unsafe_allow_html=True)
+            
+            # Cevap üret
+            with st.chat_message("assistant"):
+                with st.spinner("🤔 Düşünüyorum..."):
+                    response = st.session_state.rag_chain.query(question)
+                    
+                    # Yanıt süresini hesapla
+                    response_time = time.time() - start_time
+                    
+                    # Yazma efekti ile cevabı göster
+                    message_placeholder = st.empty()
+                    full_response = ""
+                    
+                    # Kelime kelime yazma efekti (biraz daha hızlı)
+                    words = response["answer"].split()
+                    for word in words:
+                        full_response += word + " "
+                        message_placeholder.markdown(
+                            f'<div class="slide-up-animation">{full_response}<span class="typing-indicator">▌</span></div>', 
+                            unsafe_allow_html=True
+                        )
+                        time.sleep(0.03)  # Biraz daha hızlı yazma
+                    
+                    # Son halini göster (cursor'ı kaldır)
+                    message_placeholder.markdown(f'<div class="slide-up-animation">{full_response}</div>', unsafe_allow_html=True)
+                    
+                    # Yanıt süresini göster
+                    st.caption(f"⏱️ {response_time:.1f} saniyede yanıtlandı")
+                    
+                    # Kaynakları göster
+                    sources = []
+                    if response["source_documents"]:
+                        with st.expander("📎 Kaynaklar"):
+                            for i, doc in enumerate(response["source_documents"]):
+                                source = doc.metadata.get("source", "Bilinmeyen")
+                                page = doc.metadata.get("page", "?")
+                                chunk_id = doc.metadata.get("chunk_id", "?")
+                                
+                                # Çıkarma yöntemi bilgisi
+                                method = (doc.metadata.get("extraction_method") or 
+                                        doc.metadata.get("processing_method", ""))
+                                
+                                st.write(f"**Kaynak {i+1}:** {source} - Sayfa {page} - Parça {chunk_id}")
+                                if method:
+                                    if method == "pymupdf4llm" or "pymupdf4llm" in method:
+                                        st.write(f"**Çıkarma Yöntemi:** 🤖 PyMuPDF4LLM (Markdown)")
+                                    else:
+                                        st.write(f"**Çıkarma Yöntemi:** {method}")
+                                
+                                # PyMuPDF4LLM için ek bilgiler
+                                if "markdown_features" in doc.metadata:
+                                    markdown_count = doc.metadata.get("markdown_features", 0)
+                                    if markdown_count > 0:
+                                        st.write(f"**Markdown Özellikleri:** {markdown_count} (başlık, tablo, format)")
+                                
+                                st.write(f"**İçerik:** {doc.page_content[:300]}...")
+                                sources.append(f"{source} - Sayfa {page}")
+                    
+                    # Cevabı geçmişe ekle (yanıt süresi ile birlikte)
+                    st.session_state.chat_history.append({
+                        "role": "assistant",
+                        "content": response["answer"],
+                        "sources": sources,
+                        "response_time": response_time
+                    })
+                    
+            # Sayfayı yenile
+            st.rerun()
     # Sohbeti temizle butonu
     col1, col2 = st.columns([4, 1])
     with col2:
@@ -853,5 +1054,3 @@ else:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-
